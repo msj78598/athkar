@@ -303,7 +303,7 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: "", bg: ""
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: "", bg: "", fromName: "", toName: ""
   };
   const FRAMES = [
     { k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "corners", n: "زوايا" },
@@ -354,6 +354,14 @@
               <input id="libSearch" class="hisn-search" type="search" placeholder="🔍 ابحث في كل أذكار التطبيق…" />
               <div class="chips-row" id="libChips">${chips}</div>
               <div class="lib-list" id="libList"></div>
+            </div>
+          </details>
+          <details class="ctl">
+            <summary>🎁 إهداء دعاء (من / إلى)</summary>
+            <div class="ctl-body custom-box">
+              <input id="giftTo" type="text" placeholder="إلى (مثل: الصديق الغالي أبو أحمد)" value="${esc(cardState.toName)}" />
+              <input id="giftFrom" type="text" placeholder="من (اسمك — اختياري)" value="${esc(cardState.fromName)}" />
+              <p class="drag-hint">اختر دعاءً من مكتبة «إهداء ودعوات» أو «تهاني ومناسبات»، أضف الأسماء، وشاركه هديةً.</p>
             </div>
           </details>
           <details class="ctl" open>
@@ -505,6 +513,10 @@
       view.querySelectorAll("#bgRow .chip").forEach(x => x.classList.toggle("active", x === b));
       drawCard();
     }));
+    // الإهداء (من / إلى)
+    const gt = view.querySelector("#giftTo"), gf = view.querySelector("#giftFrom");
+    if (gt) gt.addEventListener("input", () => { cardState.toName = gt.value; drawCard(); });
+    if (gf) gf.addEventListener("input", () => { cardState.fromName = gf.value; drawCard(); });
     view.querySelectorAll(".gchip").forEach(b => b.addEventListener("click", () => {
       const gi = parseInt(b.dataset.g, 10);
       view.querySelectorAll(".gchip").forEach(x => x.classList.toggle("active", x === b));
@@ -675,9 +687,17 @@
     drawFrame(ctx, W, H, u, accent, cardState.frame);
 
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
-    // العنوان أو الزخرفة (يخضع لظهور uiAlpha)
+    // العنوان أو الإهداء أو الزخرفة (يخضع لظهور uiAlpha)
     ctx.globalAlpha = anim.uiAlpha;
-    if (cardState.title) {
+    const hasGift = !!(cardState.fromName || cardState.toName);
+    const fitTo = (txt, base, weight) => { let s = base; ctx.font = `${weight} ${s}px 'Tajawal', sans-serif`; while (ctx.measureText(txt).width > W * 0.82 && s > base * 0.55) { s -= base * 0.06; ctx.font = `${weight} ${s}px 'Tajawal', sans-serif`; } };
+    if (hasGift) {
+      ctx.fillStyle = hexA(accent, 0.9); ctx.font = `${Math.round(u * 0.024)}px 'Tajawal', sans-serif`;
+      ctx.fillText("🎁 إهداء", W / 2, H * 0.072);
+      let gy = H * 0.115;
+      if (cardState.toName) { fitTo("إلى: " + cardState.toName, u * 0.036, "700"); ctx.fillStyle = accent; ctx.fillText("إلى: " + cardState.toName, W / 2, gy); gy += u * 0.044; }
+      if (cardState.fromName) { fitTo("من: " + cardState.fromName, u * 0.029, "400"); ctx.fillStyle = sub; ctx.fillText("من: " + cardState.fromName, W / 2, gy); }
+    } else if (cardState.title) {
       let ts = u * 0.042;
       ctx.font = `700 ${ts}px 'Tajawal', sans-serif`;
       while (ctx.measureText(cardState.title).width > W * 0.78 && ts > u * 0.024) { ts -= u * 0.003; ctx.font = `700 ${ts}px 'Tajawal', sans-serif`; }
@@ -886,11 +906,13 @@
 
   function cardTextForShare() {
     let t = "";
-    if (cardState.title) t += "【 " + cardState.title + " 】\n\n";
+    if (cardState.toName) t += "🎁 إلى: " + cardState.toName + "\n\n";
+    else if (cardState.title) t += "【 " + cardState.title + " 】\n\n";
     t += cardState.text;
     const pre = prophetPreamble(cardState.text, cardState.source);
     if (pre) t += "\n— " + pre;
     if (cardState.source) t += "\n﴿ " + cardState.source + " ﴾";
+    if (cardState.fromName) t += "\n\nمن: " + cardState.fromName;
     return t + "\n\nتطبيق أذكار — https://" + SITE;
   }
   function copyCardText() {
