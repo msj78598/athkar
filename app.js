@@ -44,6 +44,18 @@
 
   const ICONS = { sunrise: "🌅", moon: "🌙", mosque: "🕌", bed: "🛏️", sun: "☀️", beads: "📿", parents: "👪", anbiya: "⭐", ruqya: "🛡️" };
   if (typeof ADHKAR_EXTRA !== "undefined" && Array.isArray(ADHKAR_EXTRA)) { try { ADHKAR.push.apply(ADHKAR, ADHKAR_EXTRA); } catch (e) {} }
+
+  // فهرس موحّد لكل أذكار التطبيق (للبحث في مكتبة البطاقات)
+  function stripD(s) { return String(s).replace(/[ً-ْٰـ]/g, ""); }
+  const CARD_POOL = [];
+  (function buildCardPool() {
+    const seen = new Set();
+    const add = (t, s) => { if (!t) return; const k = t.replace(/\s+/g, ""); if (seen.has(k)) return; seen.add(k); CARD_POOL.push({ t: t, s: s || "", n: stripD(t) }); };
+    if (typeof CARD_GROUPS !== "undefined") CARD_GROUPS.forEach(g => g.items.forEach(it => add(it.t, it.s)));
+    if (typeof ADHKAR !== "undefined") ADHKAR.forEach(c => c.items.forEach(it => add(it.text, it.source)));
+    if (typeof HISN !== "undefined") HISN.forEach(c => c.items.forEach(it => add(it.text, "حصن المسلم — " + c.title)));
+  })();
+
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
   function vibrate(p) { if (navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
 
@@ -320,8 +332,9 @@
         </div>
         <div class="card-controls">
           <details class="ctl" open>
-            <summary>📚 اختر الذكر</summary>
+            <summary>📚 اختر الذكر (${CARD_POOL.length}+ ذكرًا)</summary>
             <div class="ctl-body">
+              <input id="libSearch" class="hisn-search" type="search" placeholder="🔍 ابحث في كل أذكار التطبيق…" />
               <div class="chips-row" id="libChips">${chips}</div>
               <div class="lib-list" id="libList"></div>
             </div>
@@ -470,9 +483,21 @@
     view.querySelectorAll(".gchip").forEach(b => b.addEventListener("click", () => {
       const gi = parseInt(b.dataset.g, 10);
       view.querySelectorAll(".gchip").forEach(x => x.classList.toggle("active", x === b));
+      const ls = view.querySelector("#libSearch"); if (ls) ls.value = "";
       view.querySelector("#libList").innerHTML = libItemsHTML(gi);
       bindLibItems();
     }));
+    const libSearch = view.querySelector("#libSearch");
+    if (libSearch) libSearch.addEventListener("input", () => {
+      const q = stripD(libSearch.value.trim());
+      if (!q) { view.querySelector("#libList").innerHTML = libItemsHTML(0); bindLibItems(); return; }
+      const res = [];
+      for (let i = 0; i < CARD_POOL.length && res.length < 80; i++) if (CARD_POOL[i].n.indexOf(q) >= 0) res.push(i);
+      view.querySelector("#libList").innerHTML = res.length
+        ? res.map(pi => `<button class="lib-item" data-pool="${pi}"><span>${esc(CARD_POOL[pi].t)}</span></button>`).join("")
+        : `<p class="muted-line">لا نتائج مطابقة.</p>`;
+      bindLibItems();
+    });
     bindLibItems();
     view.querySelector("#applyCustom").addEventListener("click", () => {
       const t = view.querySelector("#customText").value.trim();
@@ -515,9 +540,11 @@
   }
   function bindLibItems() {
     view.querySelectorAll(".lib-item").forEach(b => b.addEventListener("click", () => {
-      const g = parseInt(b.dataset.g, 10), i = parseInt(b.dataset.i, 10), it = CARD_GROUPS[g].items[i];
+      let t, s;
+      if (b.dataset.pool !== undefined) { const it = CARD_POOL[parseInt(b.dataset.pool, 10)]; t = it.t; s = it.s; }
+      else { const it = CARD_GROUPS[parseInt(b.dataset.g, 10)].items[parseInt(b.dataset.i, 10)]; t = it.t; s = it.s; }
       // المكتبة العامة بلا عنوان — العنوان يليق فقط بالأذكار المرتبطة بمناسبة محددة
-      cardState.text = it.t; cardState.source = it.s; cardState.title = "";
+      cardState.text = t; cardState.source = s; cardState.title = "";
       const ti = view.querySelector("#customTitle"); if (ti) ti.value = "";
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     }));
