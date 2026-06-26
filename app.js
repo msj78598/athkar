@@ -58,6 +58,7 @@
     tabbar.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
     backBtn.classList.add("hidden");
     if (tab === "athkar") renderAthkarHome();
+    else if (tab === "quran") renderQuran();
     else if (tab === "cards") renderCards();
     else if (tab === "deeds") renderDeeds();
     else if (tab === "prayer") renderPrayer();
@@ -904,6 +905,130 @@
     const text = `${d.icon} ${d.title}\n${d.desc}\n\n${d.virtue}\n﴿ ${d.source} ﴾\n\nتطبيق أذكار — https://${SITE}`;
     if (navigator.share) navigator.share({ text }).catch(() => {});
     else navigator.clipboard.writeText(text).then(() => toast("تم نسخ التذكير ✓")).catch(() => toast("تعذّر النسخ"));
+  }
+
+  /* ============== تبويب القرآن الكريم ============== */
+  const qAudio = (typeof Audio !== "undefined") ? new Audio() : null;
+  let qState = { reciterIdx: 0, curIdx: -1 };
+  const player = document.getElementById("player");
+  const plTitle = document.getElementById("plTitle");
+  const plToggle = document.getElementById("plToggle");
+  const plSeek = document.getElementById("plSeek");
+
+  function surahFile(n) { return String(n).padStart(3, "0") + ".mp3"; }
+  function surahURL(reciter, i) { return reciter.server + surahFile(i + 1); }
+
+  // تخزين محلي (IndexedDB) لتحميل السور للعمل دون اتصال
+  function idb() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open("athkar-quran", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("audio");
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+  }
+  async function idbPut(k, v) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction("audio", "readwrite"); tx.objectStore("audio").put(v, k); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
+  async function idbGet(k) { const db = await idb(); return new Promise((res) => { const tx = db.transaction("audio", "readonly"); const rq = tx.objectStore("audio").get(k); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => res(null); }); }
+  async function idbKeys() { const db = await idb(); return new Promise((res) => { const tx = db.transaction("audio", "readonly"); const rq = tx.objectStore("audio").getAllKeys(); rq.onsuccess = () => res(rq.result || []); rq.onerror = () => res([]); }); }
+  async function idbDel(k) { const db = await idb(); return new Promise((res) => { const tx = db.transaction("audio", "readwrite"); tx.objectStore("audio").delete(k); tx.oncomplete = () => res(); tx.onerror = () => res(); }); }
+  function dlKey(rid, num) { return rid + ":" + num; }
+
+  function renderQuran() {
+    appTitle.textContent = "القرآن الكريم";
+    backBtn.classList.add("hidden"); goBack = null;
+    if (typeof RECITERS === "undefined") { view.innerHTML = `<p class="muted-line">تعذّر تحميل البيانات.</p>`; return; }
+    qState.reciterIdx = parseInt(localStorage.getItem("quran_reciter") || "0", 10);
+    const opts = RECITERS.map((r, i) => `<option value="${i}" ${i === qState.reciterIdx ? "selected" : ""}>${r.name}</option>`).join("");
+    view.innerHTML = `
+      <div class="quran-top">
+        <label class="q-label">🎙️ القارئ</label>
+        <select id="reciterSel" class="region-sel">${opts}</select>
+      </div>
+      <p class="src-note">اضغط السورة للاستماع · اضغط ⬇️ لتحميلها وتعمل دون إنترنت · المصدر: mp3quran.net</p>
+      <div class="surah-list" id="surahList"><div class="loading">جارٍ التحميل…</div></div>`;
+    view.querySelector("#reciterSel").addEventListener("change", (e) => {
+      qState.reciterIdx = parseInt(e.target.value, 10);
+      localStorage.setItem("quran_reciter", e.target.value);
+      renderSurahList();
+    });
+    renderSurahList();
+    window.scrollTo(0, 0);
+  }
+
+  async function renderSurahList() {
+    const box = document.getElementById("surahList"); if (!box) return;
+    const rid = RECITERS[qState.reciterIdx].id;
+    let keys;
+    try { keys = new Set(await idbKeys()); } catch (e) { keys = new Set(); }
+    box.innerHTML = SURAHS.map((name, i) => {
+      const num = i + 1, dl = keys.has(dlKey(rid, num));
+      const cur = qState.curIdx === i && qAudio && !qAudio.paused;
+      return `<div class="surah-row ${cur ? "active" : ""}" data-i="${i}">
+        <span class="sr-num">${num}</span>
+        <span class="sr-name">${cur ? "🔊 " : ""}${name}</span>
+        <button class="sr-dl ${dl ? "done" : ""}" data-dl="${i}" title="${dl ? "محمّلة — اضغط للحذف" : "تحميل"}">${dl ? "✓" : "⬇️"}</button>
+      </div>`;
+    }).join("");
+    box.querySelectorAll(".surah-row").forEach(r => r.addEventListener("click", (e) => {
+      if (e.target.closest(".sr-dl")) return; playSurah(parseInt(r.dataset.i, 10));
+    }));
+    box.querySelectorAll(".sr-dl").forEach(b => b.addEventListener("click", (e) => {
+      e.stopPropagation(); toggleDownload(parseInt(b.dataset.dl, 10), b);
+    }));
+  }
+
+  async function playSurah(i) {
+    if (!qAudio) return;
+    stopAudio(); // أوقف صوت حصن المسلم
+    qState.curIdx = i;
+    const r = RECITERS[qState.reciterIdx], num = i + 1;
+    if (qAudio._blobUrl) { URL.revokeObjectURL(qAudio._blobUrl); qAudio._blobUrl = null; }
+    let blob = null;
+    try { blob = await idbGet(dlKey(r.id, num)); } catch (e) {}
+    if (blob) { const u = URL.createObjectURL(blob); qAudio._blobUrl = u; qAudio.src = u; }
+    else qAudio.src = surahURL(r, i);
+    qAudio.play().then(() => showPlayer(SURAHS[i] + " · " + r.name)).catch(() => toast("تعذّر التشغيل — تحقق من الاتصال"));
+    showPlayer(SURAHS[i] + " · " + r.name);
+    markSurahRows();
+  }
+  function markSurahRows() {
+    const box = document.getElementById("surahList"); if (!box) return;
+    box.querySelectorAll(".surah-row").forEach(r => {
+      const i = parseInt(r.dataset.i, 10), cur = i === qState.curIdx && qAudio && !qAudio.paused;
+      r.classList.toggle("active", cur);
+      const nm = r.querySelector(".sr-name");
+      if (nm) nm.textContent = (cur ? "🔊 " : "") + SURAHS[i];
+    });
+  }
+
+  async function toggleDownload(i, btn) {
+    const r = RECITERS[qState.reciterIdx], num = i + 1, key = dlKey(r.id, num);
+    if (btn.classList.contains("done")) {
+      await idbDel(key); btn.classList.remove("done"); btn.textContent = "⬇️"; btn.title = "تحميل"; toast("حُذفت السورة المحمّلة");
+      return;
+    }
+    btn.textContent = "⏳"; btn.disabled = true;
+    try {
+      const res = await fetch(surahURL(r, i));
+      if (!res.ok) throw new Error("net");
+      const blob = await res.blob();
+      await idbPut(key, blob);
+      btn.classList.add("done"); btn.textContent = "✓"; btn.title = "محمّلة — اضغط للحذف";
+      toast("تم تحميل سورة " + SURAHS[i] + " ✓");
+    } catch (e) { btn.textContent = "⬇️"; toast("تعذّر التحميل — تحقق من الاتصال"); }
+    btn.disabled = false;
+  }
+
+  function showPlayer(title) { if (!player) return; player.classList.remove("hidden"); plTitle.textContent = title; plToggle.textContent = "⏸"; }
+  if (qAudio && player) {
+    qAudio.addEventListener("timeupdate", () => { if (qAudio.duration) plSeek.value = (qAudio.currentTime / qAudio.duration) * 100; });
+    qAudio.addEventListener("play", () => { plToggle.textContent = "⏸"; markSurahRows(); });
+    qAudio.addEventListener("pause", () => { plToggle.textContent = "▶"; markSurahRows(); });
+    qAudio.addEventListener("ended", () => { if (qState.curIdx < 113) playSurah(qState.curIdx + 1); });
+    plToggle.addEventListener("click", () => { if (qAudio.paused) qAudio.play().catch(() => {}); else qAudio.pause(); });
+    document.getElementById("plPrev").addEventListener("click", () => { if (qState.curIdx > 0) playSurah(qState.curIdx - 1); });
+    document.getElementById("plNext").addEventListener("click", () => { if (qState.curIdx < 113) playSurah(qState.curIdx + 1); });
+    plSeek.addEventListener("input", () => { if (qAudio.duration) qAudio.currentTime = (plSeek.value / 100) * qAudio.duration; });
+    document.getElementById("plClose").addEventListener("click", () => { qAudio.pause(); player.classList.add("hidden"); });
   }
 
   /* ============== أدوات عامة ============== */
