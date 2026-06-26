@@ -683,6 +683,9 @@
       fg = th.fg; sub = th.sub;
     }
 
+    // زخرفة مركزية أنيقة تملأ الفراغ (للبطاقات بلا صورة/خلفية مشهدية)
+    if (!hasImg && !cardState.bg) drawMedallion(ctx, W, H, u, accent);
+
     const fm = u * 0.045;
     drawFrame(ctx, W, H, u, accent, cardState.frame);
 
@@ -709,12 +712,14 @@
       ctx.fillStyle = accent; ctx.font = `${Math.round(u * 0.042)}px 'Amiri Quran', serif`;
       ctx.fillText("۞", W / 2, H * 0.135);
     }
+    // فاصل زخرفي تحت الترويسة لإعطاء توازن واحترافية
+    drawFlourish(ctx, W / 2, H * 0.20, u * 0.11, accent, u);
     ctx.globalAlpha = 1;
 
     // النص الرئيسي — ملاءمة تلقائية
     const maxW = W * 0.80, areaTop = H * 0.20, areaBot = H * 0.82, maxH = areaBot - areaTop;
     const len = cardState.text.length;
-    let size = (len < 18 ? 0.105 : len < 45 ? 0.078 : len < 90 ? 0.060 : len < 150 ? 0.047 : 0.038) * u;
+    let size = (len < 18 ? 0.11 : len < 45 ? 0.086 : len < 90 ? 0.065 : len < 150 ? 0.048 : 0.038) * u;
     let lines;
     while (size >= u * 0.022) {
       ctx.font = `${size}px 'Amiri Quran', serif`;
@@ -860,6 +865,28 @@
       for (let i = 0; i < 22; i++) { const x = ((i * 137) % 100) / 100 * W, y = ((i * 89) % 100) / 100 * H, r = u * (0.02 + (i % 5) * 0.012); const rg = ctx.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, hexA(acc, 0.18)); rg.addColorStop(1, hexA(acc, 0)); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); }
     }
     ctx.restore();
+  }
+
+  // زخرفة مركزية أنيقة تملأ الفراغ (نجمة مثمّنة + دوائر) — خلف النص
+  function drawMedallion(ctx, W, H, u, accent) {
+    ctx.save();
+    ctx.translate(W / 2, H * 0.5);
+    ctx.strokeStyle = hexA(accent, 0.09); ctx.lineWidth = Math.max(1, u * 0.0018);
+    [0.34, 0.265, 0.19].forEach(r => { ctx.beginPath(); ctx.arc(0, 0, u * r, 0, 6.2832); ctx.stroke(); });
+    for (let k = 0; k < 2; k++) { ctx.save(); ctx.rotate(k * Math.PI / 4); ctx.strokeRect(-u * 0.235, -u * 0.235, u * 0.47, u * 0.47); ctx.restore(); }
+    ctx.beginPath();
+    for (let i = 0; i < 16; i++) { const a = Math.PI / 8 * i, r = (i % 2 ? 0.095 : 0.185) * u; const x = Math.cos(a) * r, y = Math.sin(a) * r; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.closePath(); ctx.stroke();
+    ctx.restore();
+  }
+  // فاصل زخرفي (خط بطرفين ومعيّن في الوسط)
+  function drawFlourish(ctx, cx, y, halfW, accent, u) {
+    ctx.strokeStyle = hexA(accent, 0.5); ctx.lineWidth = Math.max(1, u * 0.0016); ctx.fillStyle = hexA(accent, 0.75);
+    ctx.beginPath(); ctx.moveTo(cx - halfW, y); ctx.lineTo(cx - u * 0.022, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + u * 0.022, y); ctx.lineTo(cx + halfW, y); ctx.stroke();
+    ctx.save(); ctx.translate(cx, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-u * 0.009, -u * 0.009, u * 0.018, u * 0.018); ctx.restore();
+    ctx.beginPath(); ctx.arc(cx - halfW, y, u * 0.0045, 0, 6.2832); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + halfW, y, u * 0.0045, 0, 6.2832); ctx.fill();
   }
 
   // إطارات متنوّعة
