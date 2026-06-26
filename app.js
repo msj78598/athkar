@@ -286,8 +286,10 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: ""
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: "", audio: ""
   };
+  // سور قصيرة مناسبة لصوت الفيديو
+  const VIDEO_SURAHS = [1, 112, 113, 114, 108, 110, 109, 103, 105, 106, 107, 97, 94, 93];
   const FRAMES = [
     { k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "corners", n: "زوايا" },
     { k: "dashed", n: "متقطّع" }, { k: "ornate", n: "مزخرف" }, { k: "none", n: "بدون" }
@@ -370,6 +372,16 @@
                 ${sliderHTML("dark", "تعتيم لوضوح النص", 0, 95, 5, Math.round(cardState.filter.dark * 100))}
                 <button class="act full" id="removePhoto">✖ إزالة الصورة</button>
               </div>
+            </div>
+          </details>
+          <details class="ctl">
+            <summary>🔊 صوت الفيديو (تلاوة)</summary>
+            <div class="ctl-body">
+              <select id="videoAudio" class="region-sel">
+                <option value="">بدون صوت</option>
+                ${VIDEO_SURAHS.map(n => `<option value="${n}" ${cardState.audio == n ? "selected" : ""}>سورة ${(typeof SURAHS !== "undefined" ? SURAHS[n - 1] : n)}</option>`).join("")}
+              </select>
+              <p class="drag-hint">تُدمج التلاوة في الفيديو بصوت القارئ المختار في تبويب القرآن. تظهر مدة الفيديو بطول التلاوة (حتى ٣٠ ثانية).</p>
             </div>
           </details>
           <details class="ctl">
@@ -478,6 +490,9 @@
       view.querySelectorAll("#patternRow .chip").forEach(x => x.classList.toggle("active", x === b));
       drawCard();
     }));
+    // صوت الفيديو
+    const va = view.querySelector("#videoAudio");
+    if (va) va.addEventListener("change", () => { cardState.audio = va.value; });
     view.querySelectorAll(".gchip").forEach(b => b.addEventListener("click", () => {
       const gi = parseInt(b.dataset.g, 10);
       view.querySelectorAll(".gchip").forEach(x => x.classList.toggle("active", x === b));
@@ -736,7 +751,24 @@
       ph: Math.random() * 6.283, tw: 0.4 + Math.random() * 0.6
     });
 
-    const DUR = 9000;
+    // إعداد الصوت (تلاوة) إن اختير
+    let DUR = 9000, audioEl = null, actx = null, audioStream = null;
+    if (cardState.audio && typeof RECITERS !== "undefined") {
+      try {
+        const reciter = RECITERS[parseInt(localStorage.getItem("quran_reciter") || "0", 10)] || RECITERS[0];
+        const aurl = reciter.server + String(parseInt(cardState.audio, 10)).padStart(3, "0") + ".mp3";
+        audioEl = new Audio(); audioEl.crossOrigin = "anonymous"; audioEl.src = aurl; audioEl.preload = "auto";
+        await new Promise((res, rej) => { audioEl.onloadedmetadata = res; audioEl.onerror = rej; setTimeout(rej, 14000); });
+        DUR = Math.min((audioEl.duration || 9) * 1000 + 400, 30000);
+        const AC = window.AudioContext || window.webkitAudioContext;
+        actx = new AC(); if (actx.state === "suspended") { try { await actx.resume(); } catch (e) {} }
+        const srcNode = actx.createMediaElementSource(audioEl);
+        const dest = actx.createMediaStreamDestination();
+        srcNode.connect(dest);
+        audioStream = dest.stream;
+      } catch (e) { audioEl = null; audioStream = null; DUR = 9000; toast("تعذّر تحميل الصوت — سيُولّد الفيديو بلا صوت"); }
+    }
+
     function scene(ts) {
       ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
       // خلفية
@@ -851,18 +883,28 @@
       ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     }
 
-    const stream = c.captureStream(30);
-    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 7000000 });
+    const vstream = c.captureStream(30);
+    const tracks = vstream.getVideoTracks().concat(audioStream ? audioStream.getAudioTracks() : []);
+    const stream = new MediaStream(tracks);
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 7000000, audioBitsPerSecond: 128000 });
     const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = new Promise(res => { rec.onstop = res; });
-    toast("🎬 جارٍ توليد الفيديو… انتظر قليلًا");
+    toast(audioEl ? "🎬 جارٍ توليد الفيديو مع التلاوة…" : "🎬 جارٍ توليد الفيديو…");
+    if (audioEl) { try { audioEl.currentTime = 0; await audioEl.play(); } catch (e) {} }
     rec.start();
     const start = performance.now();
     await new Promise(res => {
-      function frame(now) { const el = now - start; scene(el / 1000); if (el < DUR) requestAnimationFrame(frame); else res(); }
+      function frame(now) {
+        const el = now - start;
+        scene(el / 1000);
+        const audioDone = audioEl && audioEl.ended;
+        if (el < DUR && !audioDone) requestAnimationFrame(frame); else res();
+      }
       requestAnimationFrame(frame);
     });
     rec.stop(); await stopped;
+    if (audioEl) { try { audioEl.pause(); } catch (e) {} }
+    if (actx) { try { actx.close(); } catch (e) {} }
 
     const blob = new Blob(chunks, { type: "video/webm" });
     const file = new File([blob], "thikr.webm", { type: "video/webm" });
