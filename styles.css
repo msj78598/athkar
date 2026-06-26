@@ -314,6 +314,41 @@ body {
 }
 .audio-btn:active { transform: scale(.98); }
 .muted-line { text-align: center; color: var(--text-muted); padding: 16px; }
+.hisn-entry {
+  display: flex; align-items: center; gap: 14px; margin-top: 16px;
+  padding: 18px; border-radius: var(--radius); cursor: pointer;
+  background: linear-gradient(135deg, var(--primary), var(--primary-soft)); color: #fff; box-shadow: var(--shadow);
+}
+[data-theme="dark"] .hisn-entry { background: var(--surface); border: 1px solid var(--accent); color: var(--text); }
+.hisn-entry:active { transform: scale(.99); }
+.he-ic { font-size: 2rem; }
+.he-txt { flex: 1; }
+.he-txt h3 { font-size: 1.15rem; margin-bottom: 3px; }
+.he-txt p { font-size: .85rem; opacity: .9; }
+.he-arrow { font-size: 1.6rem; opacity: .7; }
+
+/* أزرار مشاركة الذكر */
+.dhikr-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.mini-act {
+  flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text-muted); font-family: "Tajawal"; font-weight: 700; font-size: .82rem; cursor: pointer;
+}
+.mini-act:active { transform: scale(.97); }
+.mini-act:hover { border-color: var(--accent); color: var(--accent); }
+
+/* حول والمصادر */
+.about-link {
+  display: block; width: 100%; margin: 20px 0 4px; padding: 12px;
+  background: transparent; border: 1px dashed var(--line); border-radius: 12px;
+  color: var(--text-muted); font-family: "Tajawal"; font-weight: 700; font-size: .9rem; cursor: pointer;
+}
+.about-link:hover { border-color: var(--accent); color: var(--accent); }
+.about-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); line-height: 1.9; }
+.about-box h2 { color: var(--primary); margin-bottom: 12px; }
+.about-box h3 { color: var(--primary); margin: 16px 0 8px; font-size: 1.05rem; }
+.about-box ul { padding-right: 20px; }
+.about-box li { margin-bottom: 6px; }
+.about-box .about-note { margin-top: 16px; padding: 14px; background: var(--surface-2); border-right: 3px solid var(--accent); border-radius: 8px; color: var(--text-muted); font-size: .9rem; }
 
 /* ===== الأعمال الصالحة ===== */
 .deeds-list { display: flex; flex-direction: column; gap: 14px; }

@@ -11,6 +11,7 @@
   const SITE = "msj78598.github.io/athkar";
   const APP_NAME = "أذكار";
   let currentTab = "athkar";
+  let goBack = null; // وجهة زر الرجوع حسب الشاشة الحالية
 
   // رمز QR للموقع (بديل أنيق للدومين على البطاقات)
   const qrImg = new Image();
@@ -52,6 +53,7 @@
   });
   function switchTab(tab) {
     stopAudio();
+    goBack = null;
     currentTab = tab;
     tabbar.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
     backBtn.classList.add("hidden");
@@ -75,6 +77,7 @@
   function renderAthkarHome() {
     appTitle.textContent = APP_NAME;
     backBtn.classList.add("hidden");
+    goBack = null;
     let html = tickerHTML();
     html += '<p class="intro">الأذكار الصحيحة الموثّقة بمصادرها.<br>اختر فئة لتبدأ، ويُحفظ تقدّمك تلقائيًا.</p><div class="cat-grid">';
     ADHKAR.forEach(cat => {
@@ -83,19 +86,33 @@
         <h3>${cat.title}</h3><p>${done}/${cat.items.length} مكتمل</p></div>`;
     });
     html += "</div>";
-    // قسم حصن المسلم الكامل
+    // مدخل حصن المسلم (شاشة مستقلة لتنظيم أفضل)
     if (typeof HISN !== "undefined") {
-      html += `<div class="section-label">📕 حصن المسلم كامل — ${HISN.length} بابًا</div>
-        <input id="hisnSearch" class="hisn-search" type="search" placeholder="🔍 ابحث في أبواب حصن المسلم…" />
-        <div class="hisn-list" id="hisnList"></div>`;
+      const total = HISN.reduce((s, c) => s + c.items.length, 0);
+      html += `<div class="hisn-entry" id="hisnEntry">
+        <div class="he-ic">📕</div>
+        <div class="he-txt"><h3>حصن المسلم كامل</h3><p>${HISN.length} بابًا · ${total} ذكرًا — تصفّح وابحث</p></div>
+        <span class="he-arrow">‹</span></div>`;
     }
+    html += `<button class="about-link" id="aboutBtn">ℹ️ المصادر ومنهج التوثيق</button>`;
     view.innerHTML = html;
     view.querySelectorAll(".cat-card").forEach(el => el.addEventListener("click", () => renderCategory(el.dataset.cat)));
-    if (typeof HISN !== "undefined") {
-      renderHisnList("");
-      const s = document.getElementById("hisnSearch");
-      s.addEventListener("input", () => renderHisnList(s.value));
-    }
+    const he = document.getElementById("hisnEntry");
+    if (he) he.addEventListener("click", renderHisnBrowser);
+    document.getElementById("aboutBtn").addEventListener("click", renderAbout);
+    window.scrollTo(0, 0);
+  }
+
+  function renderHisnBrowser() {
+    appTitle.textContent = "حصن المسلم";
+    backBtn.classList.remove("hidden");
+    goBack = renderAthkarHome;
+    view.innerHTML = `<div class="cat-head"><h2>حصن المسلم</h2><p>كامل الأبواب — من المصدر الرسمي للكتاب</p></div>
+      <input id="hisnSearch" class="hisn-search" type="search" placeholder="🔍 ابحث في أبواب حصن المسلم…" />
+      <div class="hisn-list" id="hisnList"></div>`;
+    renderHisnList("");
+    const s = document.getElementById("hisnSearch");
+    s.addEventListener("input", () => renderHisnList(s.value));
     window.scrollTo(0, 0);
   }
   function countDone(cat) {
@@ -123,6 +140,7 @@
     const ch = HISN.find(c => c.id === id); if (!ch) return renderAthkarHome();
     appTitle.textContent = ch.title;
     backBtn.classList.remove("hidden");
+    goBack = renderHisnBrowser;
     const cid = hcid(id);
     let html = `<div class="cat-head"><h2>${esc(ch.title)}</h2><p>من كتاب حصن المسلم</p></div>`;
     if (ch.audio) html += `<button class="audio-btn" id="audioBtn" data-src="${ch.audio}">▶ استماع للباب</button>`;
@@ -135,12 +153,19 @@
           <div class="dhikr-text">${item.text}</div>
           <div class="dhikr-bottom"><span class="source">حصن المسلم</span>
             <button class="counter ${done ? "complete" : ""}" data-idx="${idx}">
-              <span class="num">${done ? "✓" : remaining}</span><span class="lbl">${done ? "تم" : "اضغط"}</span></button></div></div>`;
+              <span class="num">${done ? "✓" : remaining}</span><span class="lbl">${done ? "تم" : "اضغط"}</span></button></div>
+          <div class="dhikr-actions">
+            <button class="mini-act" data-act="share" data-idx="${idx}">📤 مشاركة</button>
+            <button class="mini-act" data-act="card" data-idx="${idx}">🎴 بطاقة</button></div></div>`;
     });
     html += `<button class="reset-cat" id="resetCat">إعادة ضبط هذا الباب</button>`;
     view.innerHTML = html;
     view.querySelectorAll(".counter").forEach(btn =>
       btn.addEventListener("click", (e) => { e.stopPropagation(); tapHisn(ch, cid, parseInt(btn.dataset.idx, 10)); }));
+    view.querySelectorAll(".mini-act").forEach(btn => btn.addEventListener("click", () => {
+      const it = ch.items[parseInt(btn.dataset.idx, 10)];
+      if (btn.dataset.act === "share") shareDhikr(it.text, "حصن المسلم"); else makeCard(it.text, "حصن المسلم");
+    }));
     document.getElementById("resetCat").addEventListener("click", () => {
       if (progress[cid]) { delete progress[cid]; saveProgress(); } renderHisnChapter(id);
     });
@@ -190,6 +215,7 @@
     const cat = ADHKAR.find(c => c.id === catId); if (!cat) return renderAthkarHome();
     appTitle.textContent = cat.title;
     backBtn.classList.remove("hidden");
+    goBack = renderAthkarHome;
     let html = `<div class="cat-head"><h2>${cat.title}</h2><p>${cat.subtitle}</p></div>
       <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
       <div class="progress-label" id="progLabel"></div></div><div id="completeBanner"></div>`;
@@ -201,12 +227,19 @@
           <div class="dhikr-meta"><span class="badge">التكرار: ${item.count}</span><span class="badge virtue">${esc(item.virtue)}</span></div>
           <div class="dhikr-bottom"><span class="source">${esc(item.source)}</span>
             <button class="counter ${done ? "complete" : ""}" data-idx="${idx}">
-              <span class="num">${done ? "✓" : remaining}</span><span class="lbl">${done ? "تم" : "اضغط"}</span></button></div></div>`;
+              <span class="num">${done ? "✓" : remaining}</span><span class="lbl">${done ? "تم" : "اضغط"}</span></button></div>
+          <div class="dhikr-actions">
+            <button class="mini-act" data-act="share" data-idx="${idx}">📤 مشاركة</button>
+            <button class="mini-act" data-act="card" data-idx="${idx}">🎴 بطاقة</button></div></div>`;
     });
     html += `<button class="reset-cat" id="resetCat">إعادة ضبط هذه الفئة</button>`;
     view.innerHTML = html;
     view.querySelectorAll(".counter").forEach(btn =>
       btn.addEventListener("click", (e) => { e.stopPropagation(); tapCounter(cat, parseInt(btn.dataset.idx, 10)); }));
+    view.querySelectorAll(".mini-act").forEach(btn => btn.addEventListener("click", () => {
+      const it = cat.items[parseInt(btn.dataset.idx, 10)];
+      if (btn.dataset.act === "share") shareDhikr(it.text, it.source); else makeCard(it.text, it.source);
+    }));
     document.getElementById("resetCat").addEventListener("click", () => {
       if (progress[cat.id]) { delete progress[cat.id]; saveProgress(); } renderCategory(cat.id);
     });
@@ -807,6 +840,46 @@
     );
   }
 
+  /* ----- مشاركة ذكر (نصًا أو بطاقة) ----- */
+  function shareDhikr(text, source) {
+    const t = text + (source ? "\n﴿ " + source + " ﴾" : "") + "\n\nتطبيق أذكار — https://" + SITE;
+    if (navigator.share) navigator.share({ text: t }).catch(() => {});
+    else navigator.clipboard.writeText(t).then(() => toast("تم نسخ الذكر ✓")).catch(() => toast("تعذّر النسخ"));
+  }
+  function makeCard(text, source) {
+    cardState.text = text; cardState.source = source || "";
+    cardState.bgImage = null; cardState.textColor = ""; cardState.textScale = 1;
+    switchTab("cards");
+    toast("جهّزنا الذكر — صمّم بطاقتك وشاركها 🎴");
+  }
+
+  /* ----- حول التطبيق والمصادر ----- */
+  function renderAbout() {
+    appTitle.textContent = "المصادر ومنهج التوثيق";
+    backBtn.classList.remove("hidden");
+    goBack = renderAthkarHome;
+    view.innerHTML = `
+      <div class="about-box">
+        <h2>منهج التوثيق</h2>
+        <p>يعتمد هذا التطبيق على <b>القرآن الكريم</b> و<b>السنة النبوية الصحيحة</b> فقط، ويتحرّى الأذكار الثابتة، ويتجنّب الضعيف والبدع.</p>
+        <h3>المصادر</h3>
+        <ul>
+          <li>القرآن الكريم (برواية حفص عن عاصم).</li>
+          <li>صحيح البخاري وصحيح مسلم، والسنن الأربعة.</li>
+          <li>كتاب «حصن المسلم» للشيخ سعيد بن علي القحطاني رحمه الله — من مصدره الرسمي.</li>
+          <li>تصحيحات أهل العلم المعتبرين كالشيخ الألباني وغيره.</li>
+        </ul>
+        <h3>للتحقق والاستزادة</h3>
+        <ul>
+          <li>الدرر السنية — dorar.net</li>
+          <li>موقع الشيخ ابن باز — binbaz.org.sa</li>
+          <li>الإفتاء — الموقع الرسمي لدار الإفتاء</li>
+        </ul>
+        <p class="about-note">نحرص على أعلى درجات الدقّة. وهذا عملٌ بشريّ قابل للخطأ، فمن وجد ملاحظةً على أي نص فنرجو إبلاغنا لتصحيحه فورًا. ويُستحسن لطالب النشر الواسع عرضُه على عالمٍ موثوق لمراجعته.</p>
+      </div>`;
+    window.scrollTo(0, 0);
+  }
+
   /* ============== تبويب الأعمال الصالحة ============== */
   function renderDeeds() {
     appTitle.textContent = "أعمال صالحة";
@@ -853,7 +926,7 @@
     themeBtn.textContent = dark ? "☀" : "☾";
     localStorage.setItem("athkar_theme", dark ? "dark" : "light");
   });
-  backBtn.addEventListener("click", () => { stopAudio(); if (currentTab === "athkar") renderAthkarHome(); });
+  backBtn.addEventListener("click", () => { stopAudio(); if (typeof goBack === "function") goBack(); });
 
   initTheme();
   renderAthkarHome();
