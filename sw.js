@@ -1,11 +1,12 @@
 /* Service Worker — يجعل التطبيق يعمل بدون إنترنت */
-const CACHE = "athkar-v1";
+const CACHE = "athkar-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./data/adhkar.js",
+  "./data/cards.js",
   "./manifest.webmanifest",
   "./icons/icon.svg"
 ];
