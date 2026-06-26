@@ -291,7 +291,7 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: ""
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: "", bg: ""
   };
   const FRAMES = [
     { k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "corners", n: "زوايا" },
@@ -300,6 +300,11 @@
   const PATTERNS = [
     { k: "", n: "تلقائي" }, { k: "none", n: "بدون" }, { k: "dots", n: "نقاط" }, { k: "stars", n: "نجوم" },
     { k: "rays", n: "أشعة" }, { k: "diamonds", n: "معيّنات" }, { k: "grid", n: "شبكة" }
+  ];
+  const BACKGROUNDS = [
+    { k: "", n: "بدون" }, { k: "mosque", n: "🕌 مسجد" }, { k: "dome", n: "قبة" }, { k: "night", n: "🌙 ليل ونجوم" },
+    { k: "arch", n: "محراب" }, { k: "lantern", n: "🏮 فوانيس" }, { k: "girih", n: "زخرفة هندسية" },
+    { k: "rays", n: "✨ نور" }, { k: "bokeh", n: "تلألؤ" }
   ];
   const TEXT_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#ffd97d", "#f5c6d6", "#bfe8ee", "#1c2625", "#0c1716"];
   function filterString(f) {
@@ -346,6 +351,8 @@
               <div class="chips-row" id="sizeRow">${sizes}</div>
               <div class="mini-label">الألوان</div>
               <div class="theme-row">${themes}</div>
+              <div class="mini-label">🕌 الخلفية الدينية</div>
+              <div class="chips-row" id="bgRow">${BACKGROUNDS.map(b => `<button class="chip ${cardState.bg === b.k ? "active" : ""}" data-bg="${b.k}">${b.n}</button>`).join("")}</div>
               <div class="mini-label">الإطار</div>
               <div class="chips-row" id="frameRow">${FRAMES.map(f => `<button class="chip ${cardState.frame === f.k ? "active" : ""}" data-frame="${f.k}">${f.n}</button>`).join("")}</div>
               <div class="mini-label">الزخرفة (بدون صورة)</div>
@@ -478,6 +485,12 @@
     view.querySelectorAll("#patternRow .chip").forEach(b => b.addEventListener("click", () => {
       cardState.pattern = b.dataset.pattern;
       view.querySelectorAll("#patternRow .chip").forEach(x => x.classList.toggle("active", x === b));
+      drawCard();
+    }));
+    // الخلفية الدينية
+    view.querySelectorAll("#bgRow .chip").forEach(b => b.addEventListener("click", () => {
+      cardState.bg = b.dataset.bg;
+      view.querySelectorAll("#bgRow .chip").forEach(x => x.classList.toggle("active", x === b));
       drawCard();
     }));
     view.querySelectorAll(".gchip").forEach(b => b.addEventListener("click", () => {
@@ -634,6 +647,12 @@
       ov.addColorStop(1, `rgba(8,11,14,${Math.min(1, d * 1.08)})`);
       ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
       fg = "#ffffff"; sub = "#ece3cd";
+    } else if (cardState.bg) {
+      drawScene(ctx, W, H, th, cardState.bg);
+      const ov = ctx.createLinearGradient(0, 0, 0, H);
+      ov.addColorStop(0, "rgba(0,0,0,0.10)"); ov.addColorStop(0.5, "rgba(0,0,0,0.28)"); ov.addColorStop(1, "rgba(0,0,0,0.42)");
+      ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
+      fg = "#ffffff"; sub = "#ece3cd";
     } else {
       const pat = cardState.pattern || th.pattern;
       if (pat && pat !== "none") paintPattern(ctx, W, H, th, pat);
@@ -733,6 +752,74 @@
     } else if (key === "frame") {
       ctx.strokeStyle = hexA(th.accent, 0.18); ctx.lineWidth = 1.5;
       for (let i = 0; i < 3; i++) { const o = u * 0.085 + i * u * 0.009; roundRect(ctx, o, o, W - 2 * o, H - 2 * o, u * 0.016); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+
+  // ===== مكتبة الخلفيات الدينية (مرسومة برمجيًا — تعمل دون إنترنت) =====
+  function sStar(ctx, x, y, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); }
+  function sCrescent(ctx, cx, cy, r, color, mask) {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = mask; ctx.beginPath(); ctx.arc(cx + r * 0.5, cy - r * 0.22, r * 0.92, 0, 6.2832); ctx.fill();
+  }
+  function sDome(ctx, cx, by, r) {
+    ctx.beginPath(); ctx.arc(cx, by, r, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx - r * 0.22, by - r * 0.96); ctx.quadraticCurveTo(cx, by - r * 1.55, cx + r * 0.22, by - r * 0.96); ctx.closePath(); ctx.fill();
+    ctx.fillRect(cx - r * 0.03, by - r * 1.75, r * 0.06, r * 0.28);
+  }
+  function sMinaret(ctx, cx, by, w, h) {
+    ctx.fillRect(cx - w / 2, by - h, w, h);
+    ctx.beginPath(); ctx.arc(cx, by - h, w * 0.75, Math.PI, 0); ctx.fill();
+    ctx.fillRect(cx - w * 0.07, by - h - w * 1.3, w * 0.14, w * 0.7);
+  }
+  function girihStar(ctx, cx, cy, R, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, R * 0.05); ctx.beginPath();
+    for (let i = 0; i < 8; i++) { const a = (Math.PI / 4) * i, r2 = i % 2 ? R * 0.42 : R; const x = cx + Math.cos(a) * r2, y = cy + Math.sin(a) * r2; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.closePath(); ctx.stroke();
+  }
+  function drawScene(ctx, W, H, th, key) {
+    const u = Math.min(W, H), acc = th.accent, sky = th.bg[0];
+    ctx.save();
+    if (key === "mosque" || key === "dome") {
+      [[.18, .22], [.34, .14], [.62, .17], [.86, .26], [.5, .1], [.72, .33], [.26, .35]].forEach(p => sStar(ctx, W * p[0], H * p[1], u * 0.007, hexA(acc, 0.6)));
+      sCrescent(ctx, W * 0.8, H * 0.19, u * 0.052, acc, sky);
+      const y = H * 0.86; ctx.fillStyle = "rgba(0,0,0,0.40)"; ctx.fillRect(0, y, W, H - y);
+      if (key === "dome") { sMinaret(ctx, W * 0.26, y, u * 0.045, u * 0.40); sMinaret(ctx, W * 0.74, y, u * 0.045, u * 0.40); sDome(ctx, W * 0.5, y, u * 0.2); }
+      else { sMinaret(ctx, W * 0.30, y, u * 0.04, u * 0.34); sMinaret(ctx, W * 0.70, y, u * 0.04, u * 0.34); sDome(ctx, W * 0.5, y, u * 0.15); sDome(ctx, W * 0.23, y, u * 0.08); sDome(ctx, W * 0.77, y, u * 0.08); }
+    } else if (key === "night") {
+      ctx.fillStyle = "rgba(0,0,10,0.25)"; ctx.fillRect(0, 0, W, H);
+      for (let i = 0; i < 70; i++) { const x = ((i * 73) % 100) / 100 * W, yy = ((i * 191) % 100) / 100 * H * 0.85; sStar(ctx, x, yy, u * (i % 5 ? 0.0045 : 0.008), hexA(acc, 0.7)); }
+      sCrescent(ctx, W * 0.7, H * 0.22, u * 0.09, acc, sky);
+    } else if (key === "arch") {
+      ctx.strokeStyle = hexA(acc, 0.55); ctx.lineWidth = Math.max(2, u * 0.006);
+      const mx = W * 0.16, top = H * 0.12, bot = H * 0.9, r = (W - 2 * mx) / 2;
+      ctx.beginPath(); ctx.moveTo(mx, bot); ctx.lineTo(mx, top + r * 0.5);
+      ctx.quadraticCurveTo(mx, top, W / 2, top); ctx.quadraticCurveTo(W - mx, top, W - mx, top + r * 0.5);
+      ctx.lineTo(W - mx, bot); ctx.stroke();
+      ctx.lineWidth = Math.max(1, u * 0.0025); ctx.strokeStyle = hexA(acc, 0.3);
+      ctx.beginPath(); ctx.moveTo(mx + u * 0.02, bot); ctx.lineTo(mx + u * 0.02, top + r * 0.5);
+      ctx.quadraticCurveTo(mx + u * 0.02, top + u * 0.02, W / 2, top + u * 0.02); ctx.quadraticCurveTo(W - mx - u * 0.02, top + u * 0.02, W - mx - u * 0.02, top + r * 0.5); ctx.lineTo(W - mx - u * 0.02, bot); ctx.stroke();
+    } else if (key === "lantern") {
+      const xs = [0.22, 0.5, 0.78], hs = [0.18, 0.28, 0.18];
+      xs.forEach((px, i) => {
+        const x = W * px, top = 0, ly = H * hs[i], s = u * 0.06;
+        ctx.strokeStyle = hexA(acc, 0.5); ctx.lineWidth = Math.max(1, u * 0.002); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, ly); ctx.stroke();
+        ctx.fillStyle = hexA(acc, 0.85); ctx.beginPath(); ctx.arc(x, ly, s * 0.18, 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = hexA(acc, 0.7); ctx.lineWidth = Math.max(1.5, u * 0.003);
+        ctx.beginPath(); ctx.moveTo(x - s * 0.5, ly + s * 0.3); ctx.lineTo(x - s * 0.35, ly + s * 1.3); ctx.lineTo(x + s * 0.35, ly + s * 1.3); ctx.lineTo(x + s * 0.5, ly + s * 0.3); ctx.closePath(); ctx.stroke();
+        sStar(ctx, x, ly + s * 0.8, s * 0.16, hexA(acc, 0.9));
+      });
+    } else if (key === "girih") {
+      const step = u * 0.2;
+      for (let y = step * 0.6; y < H; y += step) for (let x = step * 0.6; x < W; x += step) girihStar(ctx, x, y, step * 0.4, hexA(acc, 0.16));
+    } else if (key === "rays") {
+      ctx.globalCompositeOperation = "lighter";
+      const cx = W / 2, cy = -H * 0.1;
+      for (let i = -6; i <= 6; i++) { ctx.fillStyle = hexA(acc, 0.05); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + i * u * 0.12 - u * 0.05, H); ctx.lineTo(cx + i * u * 0.12 + u * 0.05, H); ctx.closePath(); ctx.fill(); }
+      const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, u * 0.8); rg.addColorStop(0, hexA(acc, 0.25)); rg.addColorStop(1, hexA(acc, 0)); ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+    } else if (key === "bokeh") {
+      ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 22; i++) { const x = ((i * 137) % 100) / 100 * W, y = ((i * 89) % 100) / 100 * H, r = u * (0.02 + (i % 5) * 0.012); const rg = ctx.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, hexA(acc, 0.18)); rg.addColorStop(1, hexA(acc, 0)); ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); }
     }
     ctx.restore();
   }
