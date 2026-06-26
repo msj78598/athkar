@@ -548,3 +548,20 @@ details.ctl > summary { padding: 12px 14px; }
   .dhikr-text { font-size: 1.55rem; }
   .acat-list, .hisn-list, .deeds-list, .surah-list { }
 }
+
+/* ============================================================
+   منع اهتزاز الصفحة على الجوال (إلغاء أي تجاوز أفقي + ثبات الارتفاع)
+   ============================================================ */
+html, body {
+  overflow-x: clip;
+  max-width: 100%;
+  overscroll-behavior-y: none;   /* يمنع ارتداد التمرير */
+}
+body { min-height: 100dvh; }      /* ارتفاع ديناميكي يمنع القفز مع شريط المتصفح */
+.container { overflow-x: clip; max-width: 100%; }
+/* السماح لعناصر الفلكس بالانكماش بدل دفع العرض */
+.acat-row, .hisn-row, .surah-row, .dhikr-bottom, .deed-foot, .header-inner, .prayer-row, .pl-info { min-width: 0; }
+.ar-txt, .sr-name, .hr-title, #plTitle { min-width: 0; overflow: hidden; }
+img, canvas, video { max-width: 100%; }
+/* الصفوف الأفقية لا تتجاوز الشاشة */
+.chips-row, .theme-row, .swatch-row, .ticker { max-width: 100%; }
