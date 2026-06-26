@@ -41,8 +41,23 @@
   <script src="app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
+      // إعادة تحميل تلقائية مرة واحدة عند تفعيل نسخة جديدة
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return; refreshing = true; location.reload();
+      });
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js").catch(() => {});
+        navigator.serviceWorker.register("sw.js").then((reg) => {
+          // افحص وجود تحديث دوريًا
+          reg.update();
+          setInterval(() => reg.update(), 60 * 60 * 1000);
+          reg.addEventListener("updatefound", () => {
+            const nw = reg.installing;
+            if (nw) nw.addEventListener("statechange", () => {
+              if (nw.state === "installed" && navigator.serviceWorker.controller) nw.postMessage("skipWaiting");
+            });
+          });
+        }).catch(() => {});
       });
     }
   </script>
