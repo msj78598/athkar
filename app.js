@@ -56,6 +56,18 @@
     if (typeof HISN !== "undefined") HISN.forEach(c => c.items.forEach(it => add(it.text, "حصن المسلم — " + c.title)));
   })();
 
+  // تمييز النص النبوي وإضافة تمهيد مع الصلاة عليه ﷺ (القرآن لا يحتاج تمهيدًا)
+  function normSrc(s) { return stripD(s || "").replace(/[أإآٱ]/g, "ا"); }
+  function isQuranSrc(s) { return /سورة|القران|قران|الفاتحة|الكرسي/.test(normSrc(s)); }
+  function isHadithSrc(s) { return /(رواه|متفق|البخاري|مسلم|الترمذي|ابو داود|ابن ماجه|النسائي|احمد|الالباني|الحاكم|ابن حبان|الطبراني|حصن المسلم|صحيح|حسن|صححه|حسنه|السيوطي)/.test(normSrc(s)); }
+  function looksLikeDua(t) { const x = normSrc(t); return /^(اللهم|ربنا|رب|يا)/.test(x) || /(اعوذ بك|اسالك|اغفر|ارحم|اعني)/.test(x); }
+  function prophetPreamble(text, source) {
+    if (isQuranSrc(source)) return "";
+    if (/عليه السلام/.test(normSrc(source))) return "";
+    if (isHadithSrc(source)) return looksLikeDua(text) ? "من دعاء النبي ﷺ" : "ثبت عن النبي ﷺ";
+    return "";
+  }
+
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
   function vibrate(p) { if (navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
 
@@ -705,9 +717,15 @@
 
     // المصدر + العلامة + QR (ظهور تدريجي)
     ctx.globalAlpha = anim.uiAlpha;
+    const pre = prophetPreamble(cardState.text, cardState.source);
+    let sy = areaBot + u * 0.032;
+    if (pre) {
+      ctx.fillStyle = hexA(accent, 0.95); ctx.font = `700 ${Math.round(u * 0.025)}px 'Tajawal', sans-serif`;
+      ctx.fillText(pre, W / 2, sy); sy += u * 0.038;
+    }
     if (cardState.source) {
-      ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.030)}px 'Amiri', 'Tajawal', sans-serif`;
-      ctx.fillText("﴿ " + cardState.source + " ﴾", W / 2, areaBot + u * 0.04);
+      ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.027)}px 'Amiri', 'Tajawal', sans-serif`;
+      ctx.fillText("﴿ " + cardState.source + " ﴾", W / 2, sy);
     }
     ctx.fillStyle = hexA(accent, 0.95);
     ctx.font = `700 ${Math.round(u * 0.030)}px 'Tajawal', sans-serif`;
@@ -870,6 +888,8 @@
     let t = "";
     if (cardState.title) t += "【 " + cardState.title + " 】\n\n";
     t += cardState.text;
+    const pre = prophetPreamble(cardState.text, cardState.source);
+    if (pre) t += "\n— " + pre;
     if (cardState.source) t += "\n﴿ " + cardState.source + " ﴾";
     return t + "\n\nتطبيق أذكار — https://" + SITE;
   }
@@ -1035,7 +1055,8 @@
 
   /* ----- مشاركة ذكر (نصًا أو بطاقة) ----- */
   function shareDhikr(text, source) {
-    const t = text + (source ? "\n﴿ " + source + " ﴾" : "") + "\n\nتطبيق أذكار — https://" + SITE;
+    const pre = prophetPreamble(text, source);
+    const t = text + (pre ? "\n— " + pre : "") + (source ? "\n﴿ " + source + " ﴾" : "") + "\n\nتطبيق أذكار — https://" + SITE;
     if (navigator.share) navigator.share({ text: t }).catch(() => {});
     else navigator.clipboard.writeText(t).then(() => toast("تم نسخ الذكر ✓")).catch(() => toast("تعذّر النسخ"));
   }
