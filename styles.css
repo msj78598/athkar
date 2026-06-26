@@ -1,0 +1,164 @@
+:root {
+  --bg: #f4f1ea;
+  --surface: #ffffff;
+  --surface-2: #faf8f3;
+  --primary: #0f3d3e;
+  --primary-soft: #1d5e5f;
+  --accent: #c8a24a;
+  --accent-soft: #e6cf95;
+  --text: #1c2625;
+  --text-muted: #5d6a68;
+  --line: #e3ddd1;
+  --shadow: 0 6px 24px rgba(15, 61, 62, 0.08);
+  --radius: 18px;
+}
+
+[data-theme="dark"] {
+  --bg: #0c1716;
+  --surface: #122322;
+  --surface-2: #0f1e1d;
+  --primary: #e6cf95;
+  --primary-soft: #c8a24a;
+  --accent: #c8a24a;
+  --accent-soft: #6b5828;
+  --text: #eef2f0;
+  --text-muted: #9bb0ad;
+  --line: #1f3a38;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: "Tajawal", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background .3s, color .3s;
+}
+
+/* ===== Header ===== */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--primary);
+  color: #fff;
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 14px;
+  box-shadow: var(--shadow);
+}
+[data-theme="dark"] .app-header { color: var(--text); border-bottom: 1px solid var(--line); }
+.header-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+#appTitle { font-size: 1.25rem; font-weight: 700; flex: 1; text-align: center; }
+.icon-btn {
+  background: rgba(255,255,255,.14);
+  border: none; color: inherit;
+  width: 40px; height: 40px; border-radius: 12px;
+  font-size: 1.3rem; cursor: pointer; display: grid; place-items: center;
+  transition: background .2s;
+}
+.icon-btn:hover { background: rgba(255,255,255,.26); }
+.hidden { visibility: hidden; }
+
+/* ===== Layout ===== */
+.container { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 18px 16px 32px; }
+
+/* ===== Category grid ===== */
+.intro { text-align: center; color: var(--text-muted); margin-bottom: 22px; line-height: 1.7; }
+.cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.cat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 16px;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: transform .15s, border-color .2s;
+}
+.cat-card:active { transform: scale(.97); }
+.cat-card:hover { border-color: var(--accent); }
+.cat-icon { font-size: 2rem; margin-bottom: 10px; }
+.cat-card h3 { color: var(--primary); font-size: 1.1rem; margin-bottom: 4px; }
+.cat-card p { color: var(--text-muted); font-size: .82rem; line-height: 1.5; }
+
+/* ===== Progress bar (category view) ===== */
+.cat-head { text-align: center; margin-bottom: 18px; }
+.cat-head h2 { color: var(--primary); font-size: 1.4rem; margin-bottom: 6px; }
+.cat-head p { color: var(--text-muted); font-size: .9rem; }
+.progress-wrap { margin: 16px 0 8px; }
+.progress-track { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-soft)); transition: width .4s; }
+.progress-label { text-align: center; font-size: .82rem; color: var(--text-muted); margin-top: 8px; }
+
+/* ===== Dhikr card ===== */
+.dhikr-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 20px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  position: relative;
+  transition: opacity .3s, transform .15s;
+}
+.dhikr-card:active { transform: scale(.995); }
+.dhikr-card.done { opacity: .55; }
+.dhikr-card.done .dhikr-text { color: var(--text-muted); }
+.dhikr-text {
+  font-family: "Amiri Quran", "Tajawal", serif;
+  font-size: 1.5rem;
+  line-height: 2.4;
+  color: var(--text);
+  text-align: justify;
+  margin-bottom: 16px;
+}
+.dhikr-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.badge {
+  font-size: .75rem; padding: 4px 10px; border-radius: 99px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--text-muted);
+}
+.badge.virtue { background: transparent; border: none; padding: 0; line-height: 1.6; }
+.dhikr-bottom { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.source { font-size: .78rem; color: var(--text-muted); flex: 1; }
+
+/* Counter */
+.counter {
+  min-width: 88px; height: 56px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: #fff;
+  border: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: "Tajawal"; line-height: 1.1;
+  transition: transform .1s, background .2s;
+  user-select: none;
+}
+[data-theme="dark"] .counter { color: #0c1716; }
+.counter:active { transform: scale(.92); }
+.counter .num { font-size: 1.5rem; font-weight: 700; }
+.counter .lbl { font-size: .65rem; opacity: .85; }
+.counter.complete { background: var(--accent); }
+
+.reset-cat {
+  display: block; margin: 8px auto 0; padding: 10px 22px;
+  background: transparent; border: 1px solid var(--line); color: var(--text-muted);
+  border-radius: 99px; cursor: pointer; font-family: "Tajawal"; font-size: .85rem;
+}
+.reset-cat:hover { border-color: var(--accent); color: var(--accent); }
+
+.complete-banner {
+  text-align: center; padding: 18px; margin-bottom: 16px;
+  background: linear-gradient(135deg, var(--accent-soft), transparent);
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  color: var(--primary); font-weight: 700;
+}
+
+/* ===== Footer ===== */
+.app-footer { text-align: center; padding: 18px 16px calc(env(safe-area-inset-bottom) + 18px); color: var(--text-muted); font-size: .82rem; }
+.app-footer a { color: var(--accent); text-decoration: none; font-weight: 700; }
+
+@media (min-width: 600px) { .cat-grid { grid-template-columns: repeat(3, 1fr); } .dhikr-text { font-size: 1.65rem; } }
