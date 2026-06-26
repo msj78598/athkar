@@ -692,7 +692,7 @@
     ctx.globalAlpha = 1;
   }
 
-  // توليد فيديو قصير متحرك (WebM) من تصميم البطاقة الحالي
+  // توليد فيديو قصير حيويّ متحرك (WebM): جسيمات ذهبية + توهّج متحرك + ظهور النص سطرًا سطرًا + نبض
   async function generateVideo(mode) {
     const test = document.createElement("canvas");
     if (typeof MediaRecorder === "undefined" || !test.captureStream) { toast("متصفحك لا يدعم توليد الفيديو — جرّب Chrome"); return; }
@@ -702,32 +702,164 @@
 
     const sz = SIZES[cardState.sizeIdx];
     const sc = Math.min(1, 1080 / Math.max(sz.w, sz.h));
-    const W = Math.round(sz.w * sc), H = Math.round(sz.h * sc);
+    const W = Math.round(sz.w * sc), H = Math.round(sz.h * sc), u = Math.min(W, H);
     const c = document.createElement("canvas"); c.width = W; c.height = H;
     const ctx = c.getContext("2d");
     try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
 
+    const th = CARD_THEMES[cardState.theme], hasImg = !!cardState.bgImage, accent = th.accent;
+    const fg = cardState.textColor || (hasImg ? "#ffffff" : th.fg), sub = hasImg ? "#ece3cd" : th.sub;
+    const clamp = x => Math.max(0, Math.min(1, x)), ease = x => 1 - Math.pow(1 - x, 3);
+
+    // تخطيط النص (يُحسب مرة واحدة)
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
+    const maxW = W * 0.80, areaTop = H * 0.20, areaBot = H * 0.82, maxH = areaBot - areaTop;
+    const len = cardState.text.length;
+    let size = (len < 18 ? 0.105 : len < 45 ? 0.078 : len < 90 ? 0.060 : len < 150 ? 0.047 : 0.038) * u;
+    let lines;
+    while (size >= u * 0.022) {
+      ctx.font = `${size}px 'Amiri Quran', serif`;
+      lines = wrapLines(ctx, cardState.text, maxW);
+      const lh0 = size * 1.75, totalH = lines.length * lh0;
+      const widest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
+      if (totalH <= maxH && widest <= maxW) break;
+      size -= u * 0.006;
+    }
+    size *= cardState.textScale || 1;
+    const lh = size * 1.75, tcY = (areaTop + areaBot) / 2, startY = tcY - ((lines.length - 1) * lh) / 2;
+
+    // جسيمات ذهبية صاعدة
+    const PN = Math.max(40, Math.round((W * H) / 24000)), particles = [];
+    for (let i = 0; i < PN; i++) particles.push({
+      x: Math.random() * W, y: Math.random() * H,
+      r: u * (0.0015 + Math.random() * 0.004), sp: u * (0.0005 + Math.random() * 0.0018),
+      ph: Math.random() * 6.283, tw: 0.4 + Math.random() * 0.6
+    });
+
+    const DUR = 9000;
+    function scene(ts) {
+      ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+      // خلفية
+      const g = ctx.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+      if (hasImg) {
+        const kz = 1 + 0.11 * ease(clamp(ts / (DUR / 1000)));
+        const panx = Math.sin(ts * 0.22) * u * 0.012;
+        ctx.save(); ctx.filter = filterString(cardState.filter);
+        drawBg(ctx, cardState.bgImage, W, H, { zoom: (cardState.img.zoom || 1) * kz, ox: (cardState.img.ox || 0) + panx, oy: cardState.img.oy || 0 });
+        ctx.restore();
+        const d = cardState.filter.dark, ov = ctx.createLinearGradient(0, 0, 0, H);
+        ov.addColorStop(0, `rgba(8,11,14,${Math.min(0.95, d * 0.7)})`);
+        ov.addColorStop(0.5, `rgba(8,11,14,${Math.min(0.96, d)})`);
+        ov.addColorStop(1, `rgba(8,11,14,${Math.min(1, d * 1.05)})`);
+        ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
+      } else {
+        // توهّج متحرك
+        ctx.globalCompositeOperation = "lighter";
+        for (let k = 0; k < 2; k++) {
+          const gx = W * (0.5 + 0.33 * Math.sin(ts * 0.25 + k * 2.1));
+          const gy = H * (0.42 + 0.30 * Math.cos(ts * 0.20 + k * 1.7));
+          const rg = ctx.createRadialGradient(gx, gy, 0, gx, gy, u * 0.62);
+          rg.addColorStop(0, hexA(accent, k ? 0.10 : 0.15)); rg.addColorStop(1, hexA(accent, 0));
+          ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+        }
+        ctx.globalCompositeOperation = "source-over";
+      }
+
+      // جسيمات
+      ctx.globalCompositeOperation = "lighter";
+      for (const p of particles) {
+        p.y -= p.sp; if (p.y < -p.r * 2) { p.y = H + p.r * 2; p.x = Math.random() * W; }
+        const tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(ts * 2 + p.ph));
+        ctx.globalAlpha = tw * p.tw * 0.7;
+        ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = p.r * 3.5;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+
+      // الإطار
+      drawFrame(ctx, W, H, u, accent, cardState.frame);
+
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
+      const fm = u * 0.045;
+      // العنوان أو الزخرفة
+      const titleA = ease(clamp((ts - 0.2) / 0.9));
+      ctx.globalAlpha = titleA;
+      if (cardState.title) {
+        let tts = u * 0.042; ctx.font = `700 ${tts}px 'Tajawal', sans-serif`;
+        while (ctx.measureText(cardState.title).width > W * 0.78 && tts > u * 0.024) { tts -= u * 0.003; ctx.font = `700 ${tts}px 'Tajawal', sans-serif`; }
+        ctx.fillStyle = accent; ctx.fillText(cardState.title, W / 2, H * 0.125);
+        const lw = u * 0.07 * ease(clamp((ts - 0.5) / 0.8));
+        ctx.strokeStyle = hexA(accent, 0.6); ctx.lineWidth = Math.max(1, u * 0.002);
+        ctx.beginPath(); ctx.moveTo(W / 2 - lw, H * 0.16); ctx.lineTo(W / 2 + lw, H * 0.16); ctx.stroke();
+      } else {
+        ctx.fillStyle = accent; ctx.font = `${Math.round(u * 0.042)}px 'Amiri Quran', serif`;
+        ctx.save(); ctx.translate(W / 2, H * 0.135); ctx.rotate(Math.sin(ts * 0.6) * 0.15);
+        ctx.fillText("۞", 0, 0); ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+
+      // النص — ظهور سطرًا سطرًا + نبض لطيف + توهّج
+      const bs = 1 + 0.012 * Math.sin(ts * 1.6);
+      ctx.save();
+      ctx.translate(W / 2, tcY); ctx.scale(bs, bs); ctx.translate(-W / 2, -tcY);
+      ctx.font = `${size}px 'Amiri Quran', serif`; ctx.fillStyle = fg;
+      lines.forEach((l, i) => {
+        const st = 0.5 + i * 0.42, a = ease(clamp((ts - st) / 0.7)); if (a <= 0) return;
+        const dy = (1 - a) * u * 0.05;
+        ctx.globalAlpha = a;
+        if (hasImg) { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = u * 0.02; ctx.shadowOffsetY = u * 0.004; }
+        else { ctx.shadowColor = hexA(accent, 0.45 * a); ctx.shadowBlur = u * 0.006 * (0.6 + 0.4 * Math.sin(ts * 1.6)); }
+        ctx.fillText(l, W / 2, startY + i * lh + dy);
+      });
+      ctx.restore();
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; ctx.globalAlpha = 1;
+
+      // ومضة ضوء تمرّ على النص مرة واحدة (~ث2.6-4.2)
+      const swp = (ts - 2.6) / 1.6;
+      if (swp > 0 && swp < 1) {
+        const sx = -W * 0.3 + swp * W * 1.6;
+        const lg = ctx.createLinearGradient(sx - u * 0.12, 0, sx + u * 0.12, 0);
+        lg.addColorStop(0, "rgba(255,255,255,0)"); lg.addColorStop(0.5, "rgba(255,255,255,0.10)"); lg.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.save(); ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = lg; ctx.fillRect(0, areaTop, W, maxH); ctx.restore();
+      }
+
+      // المصدر + العلامة + QR
+      const uiA = ease(clamp((ts - 1.8) / 1.3));
+      ctx.globalAlpha = uiA;
+      if (cardState.source) {
+        ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.030)}px 'Amiri', 'Tajawal', sans-serif`;
+        ctx.fillText("﴿ " + cardState.source + " ﴾", W / 2, areaBot + u * 0.04);
+      }
+      ctx.fillStyle = hexA(accent, 0.95); ctx.font = `700 ${Math.round(u * 0.030)}px 'Tajawal', sans-serif`;
+      ctx.fillText("📿 أذكار", W / 2, H - u * 0.066);
+      if (qrImg && qrImg.complete && qrImg.naturalWidth) {
+        const q = u * 0.115, pad = u * 0.011, qx = fm * 1.7, qy = H - fm * 1.7 - q;
+        ctx.fillStyle = "rgba(255,255,255,0.96)"; roundRect(ctx, qx - pad, qy - pad, q + pad * 2, q + pad * 2, u * 0.012); ctx.fill();
+        ctx.drawImage(qrImg, qx, qy, q, q);
+        ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.019)}px 'Tajawal', sans-serif`;
+        ctx.fillText("امسح للوصول", qx + q / 2, qy + q + u * 0.028);
+      }
+      ctx.globalAlpha = 1;
+
+      // إطار داكن خفيف للعمق
+      const vg = ctx.createRadialGradient(W / 2, H / 2, u * 0.32, W / 2, H / 2, u * 0.78);
+      vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.20)");
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    }
+
     const stream = c.captureStream(30);
-    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 });
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 7000000 });
     const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = new Promise(res => { rec.onstop = res; });
     toast("🎬 جارٍ توليد الفيديو… انتظر قليلًا");
     rec.start();
-
-    const DUR = 7000, ease = x => 1 - Math.pow(1 - x, 3), start = performance.now();
+    const start = performance.now();
     await new Promise(res => {
-      function frame(now) {
-        const el = now - start;
-        const inT = Math.min(1, el / 1400);
-        const uiT = Math.min(1, Math.max(0, el - 1100) / 1300);
-        renderCardTo(ctx, W, H, {
-          bgZoom: 1 + 0.07 * ease(Math.min(1, el / DUR)),
-          textAlpha: ease(inT),
-          textDy: (1 - ease(inT)) * H * 0.03,
-          uiAlpha: ease(uiT)
-        });
-        if (el < DUR) requestAnimationFrame(frame); else res();
-      }
+      function frame(now) { const el = now - start; scene(el / 1000); if (el < DUR) requestAnimationFrame(frame); else res(); }
       requestAnimationFrame(frame);
     });
     rec.stop(); await stopped;
