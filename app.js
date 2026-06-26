@@ -709,8 +709,10 @@
       ctx.strokeStyle = hexA(accent, 0.5); ctx.lineWidth = Math.max(1, u * 0.002);
       ctx.beginPath(); ctx.moveTo(W / 2 - u * 0.07, H * 0.16); ctx.lineTo(W / 2 + u * 0.07, H * 0.16); ctx.stroke();
     } else {
-      ctx.fillStyle = accent; ctx.font = `${Math.round(u * 0.042)}px 'Amiri Quran', serif`;
-      ctx.fillText("۞", W / 2, H * 0.135);
+      // زخرفة محايدة (معيّن صغير) بدل أي رمز
+      ctx.save(); ctx.translate(W / 2, H * 0.115); ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = accent; ctx.fillRect(-u * 0.013, -u * 0.013, u * 0.026, u * 0.026);
+      ctx.restore();
     }
     // فاصل زخرفي تحت الترويسة لإعطاء توازن واحترافية
     drawFlourish(ctx, W / 2, H * 0.20, u * 0.11, accent, u);
@@ -867,16 +869,20 @@
     ctx.restore();
   }
 
-  // زخرفة مركزية أنيقة تملأ الفراغ (نجمة مثمّنة + دوائر) — خلف النص
+  // زخرفة مركزية محايدة (نور + دوائر ونقاط) — بلا أي شكل قد يُفهم رمزًا
   function drawMedallion(ctx, W, H, u, accent) {
     ctx.save();
     ctx.translate(W / 2, H * 0.5);
-    ctx.strokeStyle = hexA(accent, 0.09); ctx.lineWidth = Math.max(1, u * 0.0018);
-    [0.34, 0.265, 0.19].forEach(r => { ctx.beginPath(); ctx.arc(0, 0, u * r, 0, 6.2832); ctx.stroke(); });
-    for (let k = 0; k < 2; k++) { ctx.save(); ctx.rotate(k * Math.PI / 4); ctx.strokeRect(-u * 0.235, -u * 0.235, u * 0.47, u * 0.47); ctx.restore(); }
-    ctx.beginPath();
-    for (let i = 0; i < 16; i++) { const a = Math.PI / 8 * i, r = (i % 2 ? 0.095 : 0.185) * u; const x = Math.cos(a) * r, y = Math.sin(a) * r; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-    ctx.closePath(); ctx.stroke();
+    // وهج ناعم
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, u * 0.42);
+    g.addColorStop(0, hexA(accent, 0.07)); g.addColorStop(1, hexA(accent, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, u * 0.42, 0, 6.2832); ctx.fill();
+    // حلقات متّحدة المركز (محايدة)
+    ctx.strokeStyle = hexA(accent, 0.085); ctx.lineWidth = Math.max(1, u * 0.0016);
+    [0.32, 0.235, 0.15].forEach(r => { ctx.beginPath(); ctx.arc(0, 0, u * r, 0, 6.2832); ctx.stroke(); });
+    // نقاط لطيفة موزّعة على الحلقة
+    ctx.fillStyle = hexA(accent, 0.11);
+    for (let i = 0; i < 12; i++) { const a = Math.PI / 6 * i; ctx.beginPath(); ctx.arc(Math.cos(a) * u * 0.32, Math.sin(a) * u * 0.32, u * 0.0042, 0, 6.2832); ctx.fill(); }
     ctx.restore();
   }
   // فاصل زخرفي (خط بطرفين ومعيّن في الوسط)
