@@ -517,6 +517,7 @@
     view.querySelectorAll(".lib-item").forEach(b => b.addEventListener("click", () => {
       const g = parseInt(b.dataset.g, 10), i = parseInt(b.dataset.i, 10), it = CARD_GROUPS[g].items[i];
       // المكتبة العامة بلا عنوان — العنوان يليق فقط بالأذكار المرتبطة بمناسبة محددة
+      cardState.text = it.t; cardState.source = it.s; cardState.title = "";
       const ti = view.querySelector("#customTitle"); if (ti) ti.value = "";
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     }));
