@@ -286,8 +286,9 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double"
   };
+  const FRAMES = [{ k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "none", n: "بدون" }];
   const TEXT_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#ffd97d", "#f5c6d6", "#bfe8ee", "#1c2625", "#0c1716"];
   function filterString(f) {
     return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) blur(${f.blur}px)`;
@@ -326,6 +327,10 @@
             <div class="section-label">🎨 التصميم</div>
             <div class="theme-row">${themes}</div>
           </div>
+          <div class="ctl-group">
+            <div class="section-label">🖼️ الإطار</div>
+            <div class="chips-row" id="frameRow">${FRAMES.map(f => `<button class="chip ${cardState.frame === f.k ? "active" : ""}" data-frame="${f.k}">${f.n}</button>`).join("")}</div>
+          </div>
           <details class="ctl" open>
             <summary>✏️ حجم النص ولونه</summary>
             <div class="ctl-body">
@@ -338,14 +343,14 @@
               </div>
             </div>
           </details>
-          <details class="ctl">
+          <details class="ctl" id="photoDetails">
             <summary>📷 خلفية صورة وفلاتر</summary>
             <div class="ctl-body">
               <label class="act full upload-label">📷 رفع صورة من جهازك
                 <input type="file" id="photoInput" accept="image/*" hidden /></label>
               <div class="filter-panel hidden" id="filterPanel">
-                <p class="drag-hint">👆 اسحب الصورة داخل المعاينة لتحريكها</p>
-                ${sliderHTML("zoom", "تكبير / تصغير الصورة", 100, 300, 5, Math.round(cardState.img.zoom * 100))}
+                <p class="drag-hint">👆 اسحب الصورة داخل المعاينة لتحريكها · صغّر أو كبّر بالشريط</p>
+                ${sliderHTML("zoom", "تكبير / تصغير الصورة", 30, 300, 5, Math.round(cardState.img.zoom * 100))}
                 <div class="chips-row">${fpresets}</div>
                 ${sliderHTML("brightness", "السطوع", 50, 150, 1, cardState.filter.brightness)}
                 ${sliderHTML("contrast", "التباين", 50, 160, 1, cardState.filter.contrast)}
@@ -448,6 +453,12 @@
       view.querySelectorAll(".theme-dot").forEach(x => x.classList.toggle("active", x === b));
       drawCard();
     }));
+    // الإطار
+    view.querySelectorAll("#frameRow .chip").forEach(b => b.addEventListener("click", () => {
+      cardState.frame = b.dataset.frame;
+      view.querySelectorAll("#frameRow .chip").forEach(x => x.classList.toggle("active", x === b));
+      drawCard();
+    }));
     view.querySelectorAll(".gchip").forEach(b => b.addEventListener("click", () => {
       const gi = parseInt(b.dataset.g, 10);
       view.querySelectorAll(".gchip").forEach(x => x.classList.toggle("active", x === b));
@@ -535,6 +546,7 @@
         cardState.img = { zoom: 1, ox: 0, oy: 0 };
         const z = view.querySelector('.frange[data-key="zoom"]'); if (z) { z.value = 100; const zv = document.getElementById("v_zoom"); if (zv) zv.textContent = "100"; }
         const fp = view.querySelector("#filterPanel"); if (fp) fp.classList.remove("hidden");
+        const pd = document.getElementById("photoDetails"); if (pd) pd.open = true; // افتح لوحة التحكم تلقائيًا
         drawCard();
         const pv = document.getElementById("cardPreview"); if (pv) pv.scrollIntoView({ behavior: "smooth", block: "center" });
       };
@@ -544,14 +556,11 @@
     reader.readAsDataURL(file);
   }
   function drawBg(ctx, img, W, H, t) {
+    // zoom = 1 يملأ البطاقة (cover). أقل من 1 يُصغّر الصورة، وأكثر يكبّرها. الحركة حرّة بالسحب.
     const cover = Math.max(W / img.width, H / img.height);
     const s = cover * (t.zoom || 1);
     const dw = img.width * s, dh = img.height * s;
-    let dx = (W - dw) / 2 + (t.ox || 0), dy = (H - dh) / 2 + (t.oy || 0);
-    // منع ظهور فراغات عند الحواف
-    dx = Math.min(0, Math.max(W - dw, dx));
-    dy = Math.min(0, Math.max(H - dh, dy));
-    t.ox = dx - (W - dw) / 2; t.oy = dy - (H - dh) / 2;
+    const dx = (W - dw) / 2 + (t.ox || 0), dy = (H - dh) / 2 + (t.oy || 0);
     ctx.drawImage(img, dx, dy, dw, dh);
   }
 
@@ -565,6 +574,11 @@
     let fg, sub, accent = th.accent;
     ctx.clearRect(0, 0, W, H);
 
+    // الخلفية المتدرّجة دائمًا (تظهر خلف الصورة عند تصغيرها)
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
     if (hasImg) {
       ctx.save(); ctx.filter = filterString(cardState.filter);
       drawBg(ctx, cardState.bgImage, W, H, cardState.img); ctx.restore();
@@ -576,19 +590,20 @@
       ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
       fg = "#ffffff"; sub = "#ece3cd";
     } else {
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
       paintPattern(ctx, W, H, th);
       fg = th.fg; sub = th.sub;
     }
 
-    // إطار مزدوج
+    // الإطار (مزدوج/بسيط/بدون)
     const fm = u * 0.045;
-    ctx.strokeStyle = hexA(accent, 0.55); ctx.lineWidth = Math.max(2, u * 0.0035);
-    roundRect(ctx, fm, fm, W - fm * 2, H - fm * 2, u * 0.026); ctx.stroke();
-    ctx.strokeStyle = hexA(accent, 0.25); ctx.lineWidth = Math.max(1.5, u * 0.0018);
-    roundRect(ctx, fm * 1.35, fm * 1.35, W - fm * 2.7, H - fm * 2.7, u * 0.02); ctx.stroke();
+    if (cardState.frame !== "none") {
+      ctx.strokeStyle = hexA(accent, 0.55); ctx.lineWidth = Math.max(2, u * 0.0035);
+      roundRect(ctx, fm, fm, W - fm * 2, H - fm * 2, u * 0.026); ctx.stroke();
+      if (cardState.frame === "double") {
+        ctx.strokeStyle = hexA(accent, 0.25); ctx.lineWidth = Math.max(1.5, u * 0.0018);
+        roundRect(ctx, fm * 1.35, fm * 1.35, W - fm * 2.7, H - fm * 2.7, u * 0.02); ctx.stroke();
+      }
+    }
 
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
     // زخرفة علوية
