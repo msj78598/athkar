@@ -909,7 +909,10 @@
 
   /* ============== تبويب القرآن الكريم ============== */
   const qAudio = (typeof Audio !== "undefined") ? new Audio() : null;
-  let qState = { reciterIdx: 0, curIdx: -1 };
+  let qState = { reciterIdx: 0, curIdx: -1, repeat: localStorage.getItem("quran_repeat") || "none" };
+  function repeatLabel() {
+    return qState.repeat === "all" ? "🔁 تكرار المصحف" : qState.repeat === "one" ? "🔂 تكرار السورة" : "🔁 التكرار: إيقاف";
+  }
   const player = document.getElementById("player");
   const plTitle = document.getElementById("plTitle");
   const plToggle = document.getElementById("plToggle");
@@ -943,12 +946,23 @@
         <label class="q-label">🎙️ القارئ</label>
         <select id="reciterSel" class="region-sel">${opts}</select>
       </div>
-      <p class="src-note">اضغط السورة للاستماع · اضغط ⬇️ لتحميلها وتعمل دون إنترنت · المصدر: mp3quran.net</p>
+      <div class="quran-controls">
+        <button class="act primary" id="playAll">▶ تشغيل المصحف كاملًا</button>
+        <button class="act" id="repeatBtn">${repeatLabel()}</button>
+      </div>
+      <p class="src-note">اضغط السورة للاستماع · يكمل تلقائيًا للسورة التالية · ⬇️ للتحميل دون إنترنت · المصدر: mp3quran.net</p>
       <div class="surah-list" id="surahList"><div class="loading">جارٍ التحميل…</div></div>`;
     view.querySelector("#reciterSel").addEventListener("change", (e) => {
       qState.reciterIdx = parseInt(e.target.value, 10);
       localStorage.setItem("quran_reciter", e.target.value);
       renderSurahList();
+    });
+    view.querySelector("#playAll").addEventListener("click", () => playSurah(0));
+    view.querySelector("#repeatBtn").addEventListener("click", (e) => {
+      qState.repeat = qState.repeat === "none" ? "all" : qState.repeat === "all" ? "one" : "none";
+      localStorage.setItem("quran_repeat", qState.repeat);
+      e.target.textContent = repeatLabel();
+      toast(qState.repeat === "all" ? "تكرار المصحف كاملًا 🔁" : qState.repeat === "one" ? "تكرار السورة 🔂" : "إيقاف التكرار");
     });
     renderSurahList();
     window.scrollTo(0, 0);
@@ -1023,7 +1037,11 @@
     qAudio.addEventListener("timeupdate", () => { if (qAudio.duration) plSeek.value = (qAudio.currentTime / qAudio.duration) * 100; });
     qAudio.addEventListener("play", () => { plToggle.textContent = "⏸"; markSurahRows(); });
     qAudio.addEventListener("pause", () => { plToggle.textContent = "▶"; markSurahRows(); });
-    qAudio.addEventListener("ended", () => { if (qState.curIdx < 113) playSurah(qState.curIdx + 1); });
+    qAudio.addEventListener("ended", () => {
+      if (qState.repeat === "one") { playSurah(qState.curIdx); return; }
+      if (qState.curIdx < 113) playSurah(qState.curIdx + 1);
+      else if (qState.repeat === "all") playSurah(0); // ختمة متصلة: العودة للفاتحة
+    });
     plToggle.addEventListener("click", () => { if (qAudio.paused) qAudio.play().catch(() => {}); else qAudio.pause(); });
     document.getElementById("plPrev").addEventListener("click", () => { if (qState.curIdx > 0) playSurah(qState.curIdx - 1); });
     document.getElementById("plNext").addEventListener("click", () => { if (qState.curIdx < 113) playSurah(qState.curIdx + 1); });

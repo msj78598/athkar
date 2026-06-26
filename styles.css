@@ -367,7 +367,8 @@ body {
 .deed-share:active { transform: scale(.96); }
 
 /* ===== القرآن الكريم ===== */
-.quran-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.quran-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.quran-controls { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-bottom: 10px; }
 .q-label { font-family: "Tajawal"; font-weight: 700; color: var(--primary); white-space: nowrap; }
 .surah-list { display: flex; flex-direction: column; gap: 6px; }
 .surah-row {
