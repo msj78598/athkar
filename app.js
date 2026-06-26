@@ -286,10 +286,61 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: "", audio: ""
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: "", audio: "", ayahRef: ""
   };
   // سور قصيرة مناسبة لصوت الفيديو
   const VIDEO_SURAHS = [1, 112, 113, 114, 108, 110, 109, 103, 105, 106, 107, 97, 94, 93];
+  // مجلدات القرّاء على everyayah لتلاوة الآية المطابقة
+  const EA_FOLDERS = {
+    afs: "Alafasy_128kbps", sds: "Abdurrahmaan_As-Sudais_192kbps", shur: "Saood_ash-Shuraym_128kbps",
+    maher: "MaherAlMuaiqly128kbps", minsh: "Minshawy_Murattal_128kbps", bsfr: "Abdullah_Basfar_192kbps",
+    s_gmd: "Ghamadi_40kbps", yasser: "Yasser_Ad-Dussary_128kbps", jbrl: "Muhammad_Jibreel_128kbps"
+  };
+  const pad3 = n => String(n).padStart(3, "0");
+  function qnorm(s) { return String(s).replace(/[ً-ٰٟـۖ-ۭ]/g, "").replace(/[آأإٱ]/g, "ا").replace(/ى/g, "ي").replace(/[^ء-ي]/g, ""); }
+  // مراجع الآيات لبطاقات النصوص القرآنية (لمطابقة التلاوة)
+  const _refsRaw = [
+    ["رَبَّنَا ظَلَمْنَا أَنْفُسَنَا وَإِنْ لَمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ", "7:23"],
+    ["رَبَّنَا اغْفِرْ لَنَا ذُنُوبَنَا وَإِسْرَافَنَا فِي أَمْرِنَا وَثَبِّتْ أَقْدَامَنَا", "3:147"],
+    ["لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ", "21:87"],
+    ["حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ", "9:129"],
+    ["الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ", "1:2"],
+    ["رَبِّ أَوْزِعْنِي أَنْ أَشْكُرَ نِعْمَتَكَ الَّتِي أَنْعَمْتَ عَلَيَّ وَعَلَى وَالِدَيَّ", "27:19"],
+    ["رَبِّ إِنِّي مَسَّنِيَ الضُّرُّ وَأَنْتَ أَرْحَمُ الرَّاحِمِينَ", "21:83"],
+    ["رَبِّ إِنِّي لِمَا أَنْزَلْتَ إِلَيَّ مِنْ خَيْرٍ فَقِيرٌ", "28:24"],
+    ["وَمَنْ يَتَّقِ اللَّهَ يَجْعَلْ لَهُ مَخْرَجًا وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ", "65:2-3"],
+    ["رَبَّنَا لَا تُزِغْ قُلُوبَنَا بَعْدَ إِذْ هَدَيْتَنَا وَهَبْ لَنَا مِنْ لَدُنْكَ رَحْمَةً إِنَّكَ أَنْتَ الْوَهَّابُ", "3:8"],
+    ["اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ", "1:6"],
+    ["رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ وَاجْعَلْنَا لِلْمُتَّقِينَ إِمَامًا", "25:74"],
+    ["رَبِّ هَبْ لِي مِنْ لَدُنْكَ ذُرِّيَّةً طَيِّبَةً إِنَّكَ سَمِيعُ الدُّعَاءِ", "3:38"],
+    ["رَبِّ اجْعَلْنِي مُقِيمَ الصَّلَاةِ وَمِنْ ذُرِّيَّتِي رَبَّنَا وَتَقَبَّلْ دُعَاءِ", "14:40"],
+    ["رَبِّ هَبْ لِي مِنَ الصَّالِحِينَ", "37:100"],
+    ["رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ", "2:201"],
+    ["رَبَّنَا اصْرِفْ عَنَّا عَذَابَ جَهَنَّمَ إِنَّ عَذَابَهَا كَانَ غَرَامًا", "25:65"],
+    ["رَبِّ ابْنِ لِي عِنْدَكَ بَيْتًا فِي الْجَنَّةِ", "66:11"],
+    ["رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي", "20:25-26"],
+    ["سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ", "43:13-14"],
+    ["رَبَّنَا اغْفِرْ لَنَا وَلِإِخْوَانِنَا الَّذِينَ سَبَقُونَا بِالْإِيمَانِ وَلَا تَجْعَلْ فِي قُلُوبِنَا غِلًّا لِلَّذِينَ آمَنُوا", "59:10"],
+    ["رَبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا", "17:24"],
+    ["رَبَّنَا اغْفِرْ لِي وَلِوَالِدَيَّ وَلِلْمُؤْمِنِينَ يَوْمَ يَقُومُ الْحِسَابُ", "14:41"],
+    ["أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ", "13:28"],
+    ["فَاذْكُرُونِي أَذْكُرْكُمْ وَاشْكُرُوا لِي وَلَا تَكْفُرُونِ", "2:152"],
+    ["إِنَّ مَعَ الْعُسْرِ يُسْرًا", "94:6"],
+    ["وَقُلْ رَبِّ زِدْنِي عِلْمًا", "20:114"],
+    ["وَمَنْ يَتَّقِ اللَّهَ يَجْعَلْ لَهُ مَخْرَجًا", "65:2"],
+    ["حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ", "3:173"],
+    ["وَبَشِّرِ الصَّابِرِينَ", "2:155"],
+    ["إِنَّ اللَّهَ مَعَ الَّذِينَ اتَّقَوْا وَالَّذِينَ هُمْ مُحْسِنُونَ", "16:128"],
+    ["وَعَسَى أَنْ تَكْرَهُوا شَيْئًا وَهُوَ خَيْرٌ لَكُمْ", "2:216"]
+  ];
+  const AYAH_REFS = {}; _refsRaw.forEach(([t, r]) => { AYAH_REFS[qnorm(t)] = r; });
+  function refForText(t) { return AYAH_REFS[qnorm(t || "")] || ""; }
+  function ayahUrls(ref, folder) {
+    const parts = ref.split(":"), su = parseInt(parts[0], 10), ar = parts[1];
+    let a1, a2; if (ar.indexOf("-") >= 0) { const p = ar.split("-"); a1 = +p[0]; a2 = +p[1]; } else { a1 = a2 = +ar; }
+    const out = []; for (let a = a1; a <= a2; a++) out.push(`https://everyayah.com/data/${folder}/${pad3(su)}${pad3(a)}.mp3`);
+    return out;
+  }
   const FRAMES = [
     { k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "corners", n: "زوايا" },
     { k: "dashed", n: "متقطّع" }, { k: "ornate", n: "مزخرف" }, { k: "none", n: "بدون" }
@@ -379,9 +430,10 @@
             <div class="ctl-body">
               <select id="videoAudio" class="region-sel">
                 <option value="">بدون صوت</option>
+                <option value="match" ${cardState.audio === "match" ? "selected" : ""}>🔁 تلاوة النص المعروض (للآيات القرآنية)</option>
                 ${VIDEO_SURAHS.map(n => `<option value="${n}" ${cardState.audio == n ? "selected" : ""}>سورة ${(typeof SURAHS !== "undefined" ? SURAHS[n - 1] : n)}</option>`).join("")}
               </select>
-              <p class="drag-hint">تُدمج التلاوة في الفيديو بصوت القارئ المختار في تبويب القرآن. تظهر مدة الفيديو بطول التلاوة (حتى ٣٠ ثانية).</p>
+              <p class="drag-hint">تُدمج التلاوة بصوت القارئ المختار في تبويب القرآن. «تلاوة النص المعروض» تطابق الآية المعروضة. مدة الفيديو بطول التلاوة.</p>
             </div>
           </details>
           <details class="ctl">
@@ -505,6 +557,7 @@
       if (!t) { view.querySelector("#customText").focus(); return; }
       cardState.text = t; cardState.source = view.querySelector("#customSource").value.trim();
       cardState.title = view.querySelector("#customTitle").value.trim();
+      cardState.ayahRef = refForText(t);
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     });
     view.querySelector("#randomCard").addEventListener("click", () => {
@@ -547,7 +600,7 @@
     view.querySelectorAll(".lib-item").forEach(b => b.addEventListener("click", () => {
       const g = parseInt(b.dataset.g, 10), i = parseInt(b.dataset.i, 10), it = CARD_GROUPS[g].items[i];
       // المكتبة العامة بلا عنوان — العنوان يليق فقط بالأذكار المرتبطة بمناسبة محددة
-      cardState.text = it.t; cardState.source = it.s; cardState.title = "";
+      cardState.text = it.t; cardState.source = it.s; cardState.title = ""; cardState.ayahRef = refForText(it.t);
       const ti = view.querySelector("#customTitle"); if (ti) ti.value = "";
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     }));
@@ -751,22 +804,28 @@
       ph: Math.random() * 6.283, tw: 0.4 + Math.random() * 0.6
     });
 
-    // إعداد الصوت (تلاوة) إن اختير
-    let DUR = 9000, audioEl = null, actx = null, audioStream = null;
-    if (cardState.audio && typeof RECITERS !== "undefined") {
+    // إعداد الصوت — تلاوة مطابقة للآيات أو سورة قصيرة
+    let DUR = 9000, audioEls = [], actx = null, audioStream = null;
+    let urls = [];
+    const ridx = (typeof RECITERS !== "undefined") ? (parseInt(localStorage.getItem("quran_reciter") || "0", 10)) : 0;
+    const reciter = (typeof RECITERS !== "undefined") ? (RECITERS[ridx] || RECITERS[0]) : null;
+    if (cardState.audio === "match") {
+      if (cardState.ayahRef) { urls = ayahUrls(cardState.ayahRef, EA_FOLDERS[reciter && reciter.id] || "Alafasy_128kbps"); }
+      else { toast("المطابقة الصوتية متاحة للنصوص القرآنية (الآيات) فقط"); }
+    } else if (cardState.audio && /^\d+$/.test(cardState.audio) && reciter) {
+      urls = [reciter.server + pad3(parseInt(cardState.audio, 10)) + ".mp3"];
+    }
+    if (urls.length) {
       try {
-        const reciter = RECITERS[parseInt(localStorage.getItem("quran_reciter") || "0", 10)] || RECITERS[0];
-        const aurl = reciter.server + String(parseInt(cardState.audio, 10)).padStart(3, "0") + ".mp3";
-        audioEl = new Audio(); audioEl.crossOrigin = "anonymous"; audioEl.src = aurl; audioEl.preload = "auto";
-        await new Promise((res, rej) => { audioEl.onloadedmetadata = res; audioEl.onerror = rej; setTimeout(rej, 14000); });
-        DUR = Math.min((audioEl.duration || 9) * 1000 + 400, 30000);
         const AC = window.AudioContext || window.webkitAudioContext;
         actx = new AC(); if (actx.state === "suspended") { try { await actx.resume(); } catch (e) {} }
-        const srcNode = actx.createMediaElementSource(audioEl);
         const dest = actx.createMediaStreamDestination();
-        srcNode.connect(dest);
+        audioEls = urls.map(u => { const a = new Audio(); a.crossOrigin = "anonymous"; a.src = u; a.preload = "auto"; actx.createMediaElementSource(a).connect(dest); return a; });
+        await Promise.all(audioEls.map(a => new Promise((res, rej) => { a.onloadedmetadata = res; a.onerror = rej; setTimeout(rej, 15000); })));
+        const total = audioEls.reduce((s, a) => s + (a.duration || 0), 0);
+        DUR = Math.min(total * 1000 + 600, 40000);
         audioStream = dest.stream;
-      } catch (e) { audioEl = null; audioStream = null; DUR = 9000; toast("تعذّر تحميل الصوت — سيُولّد الفيديو بلا صوت"); }
+      } catch (e) { audioEls = []; audioStream = null; actx = null; DUR = 9000; toast("تعذّر تحميل الصوت — سيُولّد الفيديو بلا صوت"); }
     }
 
     function scene(ts) {
@@ -889,21 +948,25 @@
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 7000000, audioBitsPerSecond: 128000 });
     const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = new Promise(res => { rec.onstop = res; });
-    toast(audioEl ? "🎬 جارٍ توليد الفيديو مع التلاوة…" : "🎬 جارٍ توليد الفيديو…");
-    if (audioEl) { try { audioEl.currentTime = 0; await audioEl.play(); } catch (e) {} }
+    toast(audioEls.length ? "🎬 جارٍ توليد الفيديو مع التلاوة…" : "🎬 جارٍ توليد الفيديو…");
     rec.start();
+    // تشغيل المقاطع الصوتية بالتسلسل
+    if (audioEls.length) {
+      let ai = 0;
+      const playNext = () => { if (ai < audioEls.length) { const a = audioEls[ai]; a.onended = () => { ai++; playNext(); }; try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} } };
+      playNext();
+    }
     const start = performance.now();
     await new Promise(res => {
       function frame(now) {
         const el = now - start;
         scene(el / 1000);
-        const audioDone = audioEl && audioEl.ended;
-        if (el < DUR && !audioDone) requestAnimationFrame(frame); else res();
+        if (el < DUR) requestAnimationFrame(frame); else res();
       }
       requestAnimationFrame(frame);
     });
     rec.stop(); await stopped;
-    if (audioEl) { try { audioEl.pause(); } catch (e) {} }
+    audioEls.forEach(a => { try { a.pause(); } catch (e) {} });
     if (actx) { try { actx.close(); } catch (e) {} }
 
     const blob = new Blob(chunks, { type: "video/webm" });
@@ -1168,6 +1231,7 @@
   }
   function makeCard(text, source, title) {
     cardState.text = text; cardState.source = source || ""; cardState.title = title || "";
+    cardState.ayahRef = refForText(text);
     cardState.bgImage = null; cardState.textColor = ""; cardState.textScale = 1;
     switchTab("cards");
     toast("جهّزنا الذكر — صمّم بطاقتك وشاركها 🎴");
