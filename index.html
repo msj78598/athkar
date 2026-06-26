@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0f3d3e" />
-  <meta name="description" content="أذكار المسلم الصحيحة الموثّقة: أذكار الصباح والمساء والنوم، بطاقات أذكار للمشاركة، ومواقيت الصلاة. يعمل بدون إنترنت." />
-  <title>أذكار المسلم — أذكار صحيحة وبطاقات ومواقيت</title>
+  <meta name="description" content="أذكار صحيحة موثّقة: الصباح والمساء والنوم وحصن المسلم، بطاقات للمشاركة، مواقيت الصلاة، وأعمال صالحة. يعمل بدون إنترنت." />
+  <title>أذكار — صحيحة موثّقة وبطاقات ومواقيت</title>
 
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
@@ -21,7 +21,7 @@
   <header class="app-header">
     <div class="header-inner">
       <button id="backBtn" class="icon-btn hidden" aria-label="رجوع">&#8594;</button>
-      <h1 id="appTitle">أذكار المسلم</h1>
+      <h1 id="appTitle">أذكار</h1>
       <button id="themeBtn" class="icon-btn" aria-label="الوضع الليلي">&#9789;</button>
     </div>
   </header>
@@ -33,12 +33,14 @@
   <nav class="tabbar" id="tabbar">
     <button class="tab active" data-tab="athkar"><span class="tab-ic">📿</span><span>الأذكار</span></button>
     <button class="tab" data-tab="cards"><span class="tab-ic">🎴</span><span>بطاقات</span></button>
+    <button class="tab" data-tab="deeds"><span class="tab-ic">🌿</span><span>أعمال</span></button>
     <button class="tab" data-tab="prayer"><span class="tab-ic">🕌</span><span>المواقيت</span></button>
   </nav>
 
   <script src="data/adhkar.js"></script>
   <script src="data/cards.js"></script>
   <script src="data/hisn.js"></script>
+  <script src="data/deeds.js"></script>
   <script src="app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {

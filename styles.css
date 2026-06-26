@@ -300,6 +300,22 @@ body {
 .audio-btn:active { transform: scale(.98); }
 .muted-line { text-align: center; color: var(--text-muted); padding: 16px; }
 
+/* ===== الأعمال الصالحة ===== */
+.deeds-list { display: flex; flex-direction: column; gap: 14px; }
+.deed-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+.deed-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.deed-ic { font-size: 1.7rem; }
+.deed-head h3 { color: var(--primary); font-size: 1.15rem; }
+.deed-desc { color: var(--text); line-height: 1.8; margin-bottom: 8px; }
+.deed-virtue { color: var(--text-muted); line-height: 1.9; font-family: "Amiri", "Tajawal"; border-right: 3px solid var(--accent); padding-right: 12px; margin-bottom: 12px; }
+.deed-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.deed-share {
+  flex: 0 0 auto; padding: 9px 16px; border-radius: 99px; border: 1px solid var(--primary);
+  background: var(--primary); color: #fff; font-family: "Tajawal"; font-weight: 700; font-size: .85rem; cursor: pointer;
+}
+[data-theme="dark"] .deed-share { background: var(--accent); border-color: var(--accent); color: #0c1716; }
+.deed-share:active { transform: scale(.96); }
+
 /* ===== Toast ===== */
 #toast {
   position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);

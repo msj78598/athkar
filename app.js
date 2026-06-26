@@ -1,4 +1,4 @@
-/* أذكار المسلم — منطق التطبيق (أذكار + بطاقات + مواقيت) */
+/* أذكار — منطق التطبيق (أذكار + حصن المسلم + بطاقات + أعمال + مواقيت) */
 (function () {
   "use strict";
 
@@ -9,7 +9,13 @@
   const tabbar = document.getElementById("tabbar");
 
   const SITE = "msj78598.github.io/athkar";
+  const APP_NAME = "أذكار";
   let currentTab = "athkar";
+
+  // رمز QR للموقع (بديل أنيق للدومين على البطاقات)
+  const qrImg = new Image();
+  qrImg.src = "icons/qr.png";
+  qrImg.onload = () => { if (document.getElementById("cardCanvas")) drawCard(); };
 
   const todayDate = new Date();
   const today = todayDate.toISOString().slice(0, 10);
@@ -51,6 +57,7 @@
     backBtn.classList.add("hidden");
     if (tab === "athkar") renderAthkarHome();
     else if (tab === "cards") renderCards();
+    else if (tab === "deeds") renderDeeds();
     else if (tab === "prayer") renderPrayer();
   }
 
@@ -65,7 +72,7 @@
   }
 
   function renderAthkarHome() {
-    appTitle.textContent = "أذكار المسلم";
+    appTitle.textContent = APP_NAME;
     backBtn.classList.add("hidden");
     let html = tickerHTML();
     html += '<p class="intro">الأذكار الصحيحة الموثّقة بمصادرها.<br>اختر فئة لتبدأ، ويُحفظ تقدّمك تلقائيًا.</p><div class="cat-grid">';
@@ -502,11 +509,19 @@
       ctx.fillText("﴿ " + cardState.source + " ﴾", W / 2, areaBot + u * 0.04);
     }
 
-    // العلامة (تنشر التطبيق)
-    ctx.fillStyle = hexA(accent, 0.95); ctx.font = `700 ${Math.round(u * 0.028)}px 'Tajawal', sans-serif`;
-    ctx.fillText("📿 أذكار المسلم", W / 2, H - u * 0.085);
-    ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.024)}px 'Tajawal', sans-serif`;
-    ctx.fillText(SITE, W / 2, H - u * 0.05);
+    // العلامة: اسم مختصر + رمز QR للوصول (بدل الدومين الطويل)
+    ctx.fillStyle = hexA(accent, 0.95);
+    ctx.font = `700 ${Math.round(u * 0.030)}px 'Tajawal', sans-serif`;
+    ctx.fillText("📿 أذكار", W / 2, H - u * 0.066);
+    if (qrImg && qrImg.complete && qrImg.naturalWidth) {
+      const q = u * 0.115, pad = u * 0.011, qx = fm * 1.7, qy = H - fm * 1.7 - q;
+      ctx.fillStyle = "rgba(255,255,255,0.96)";
+      roundRect(ctx, qx - pad, qy - pad, q + pad * 2, q + pad * 2, u * 0.012); ctx.fill();
+      ctx.drawImage(qrImg, qx, qy, q, q);
+      ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.019)}px 'Tajawal', sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("امسح للوصول", qx + q / 2, qy + q + u * 0.028);
+    }
   }
 
   function paintPattern(ctx, W, H, th) {
@@ -548,7 +563,7 @@
   function cardTextForShare() {
     let t = cardState.text;
     if (cardState.source) t += "\n﴿ " + cardState.source + " ﴾";
-    return t + "\n\nمن تطبيق أذكار المسلم — https://" + SITE;
+    return t + "\n\nتطبيق أذكار — https://" + SITE;
   }
   function copyCardText() {
     navigator.clipboard.writeText(cardTextForShare())
@@ -708,6 +723,32 @@
       () => toast("تعذّر الوصول للموقع — اختر منطقة يدويًا"),
       { timeout: 10000 }
     );
+  }
+
+  /* ============== تبويب الأعمال الصالحة ============== */
+  function renderDeeds() {
+    appTitle.textContent = "أعمال صالحة";
+    backBtn.classList.add("hidden");
+    if (typeof DEEDS === "undefined") { view.innerHTML = `<p class="muted-line">لا يوجد محتوى.</p>`; return; }
+    let html = `<p class="intro">تذكير بأبواب الخير الثابتة في السنة — «من دلّ على خير فله مثل أجر فاعله».<br>افعلها وذكّر بها غيرك، ولك أجرٌ بكل من يعمل بها.</p><div class="deeds-list">`;
+    DEEDS.forEach((d, i) => {
+      html += `<div class="deed-card">
+        <div class="deed-head"><span class="deed-ic">${d.icon}</span><h3>${esc(d.title)}</h3></div>
+        <p class="deed-desc">${esc(d.desc)}</p>
+        <p class="deed-virtue">${esc(d.virtue)}</p>
+        <div class="deed-foot"><span class="source">${esc(d.source)}</span>
+          <button class="deed-share" data-i="${i}">📤 شارك</button></div></div>`;
+    });
+    html += `</div>`;
+    view.innerHTML = html;
+    view.querySelectorAll(".deed-share").forEach(b => b.addEventListener("click", () => shareDeed(parseInt(b.dataset.i, 10))));
+    window.scrollTo(0, 0);
+  }
+  function shareDeed(i) {
+    const d = DEEDS[i];
+    const text = `${d.icon} ${d.title}\n${d.desc}\n\n${d.virtue}\n﴿ ${d.source} ﴾\n\nتطبيق أذكار — https://${SITE}`;
+    if (navigator.share) navigator.share({ text }).catch(() => {});
+    else navigator.clipboard.writeText(text).then(() => toast("تم نسخ التذكير ✓")).catch(() => toast("تعذّر النسخ"));
   }
 
   /* ============== أدوات عامة ============== */

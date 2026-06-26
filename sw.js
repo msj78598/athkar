@@ -1,5 +1,5 @@
 /* Service Worker — عمل بدون إنترنت + تحديث تلقائي للنسخ الجديدة */
-const CACHE = "athkar-v5";
+const CACHE = "athkar-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,8 +8,10 @@ const ASSETS = [
   "./data/adhkar.js",
   "./data/cards.js",
   "./data/hisn.js",
+  "./data/deeds.js",
   "./manifest.webmanifest",
-  "./icons/icon.svg"
+  "./icons/icon.svg",
+  "./icons/qr.png"
 ];
 
 self.addEventListener("install", (e) => {
