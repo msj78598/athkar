@@ -208,6 +208,18 @@ body {
 .slider-box label span { color: var(--accent); }
 .frange { width: 100%; accent-color: var(--primary); height: 6px; }
 [data-theme="dark"] .frange { accent-color: var(--accent); }
+.drag-hint { text-align: center; color: var(--text-muted); font-size: .82rem; margin: 2px 0 10px; }
+.card-preview canvas { cursor: default; touch-action: none; }
+.card-preview canvas.grabbing { cursor: grabbing; }
+.swatch-label { font-family: "Tajawal"; font-weight: 700; font-size: .85rem; color: var(--text-muted); margin: 10px 2px 8px; }
+.swatch-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch {
+  width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
+  border: 2px solid var(--line); display: grid; place-items: center; font-size: .9rem; color: var(--text-muted);
+  background: var(--surface); padding: 0; overflow: hidden; position: relative;
+}
+.swatch.active { border-color: var(--accent); transform: scale(1.08); }
+.swatch.pick input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .card-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
 .act {
   padding: 13px; border-radius: 13px; border: 1px solid var(--line);

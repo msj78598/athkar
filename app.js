@@ -251,8 +251,10 @@
   ];
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
-    filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 }
+    filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }
   };
+  const TEXT_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#ffd97d", "#f5c6d6", "#bfe8ee", "#1c2625", "#0c1716"];
   function filterString(f) {
     return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) blur(${f.blur}px)`;
   }
@@ -290,12 +292,26 @@
             <div class="section-label">🎨 التصميم</div>
             <div class="theme-row">${themes}</div>
           </div>
+          <details class="ctl" open>
+            <summary>✏️ حجم النص ولونه</summary>
+            <div class="ctl-body">
+              ${sliderHTML("textScale", "حجم النص", 60, 170, 5, Math.round(cardState.textScale * 100))}
+              <div class="swatch-label">لون النص</div>
+              <div class="swatch-row" id="textColors">
+                <button class="swatch reset ${cardState.textColor ? "" : "active"}" data-col="" title="افتراضي">↺</button>
+                ${TEXT_COLORS.map(c => `<button class="swatch ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${c}"></button>`).join("")}
+                <label class="swatch pick" title="لون مخصّص"><input type="color" id="textColorPick" value="#ffffff" />🎨</label>
+              </div>
+            </div>
+          </details>
           <details class="ctl">
             <summary>📷 خلفية صورة وفلاتر</summary>
             <div class="ctl-body">
               <label class="act full upload-label">📷 رفع صورة من جهازك
                 <input type="file" id="photoInput" accept="image/*" hidden /></label>
               <div class="filter-panel hidden" id="filterPanel">
+                <p class="drag-hint">👆 اسحب الصورة داخل المعاينة لتحريكها</p>
+                ${sliderHTML("zoom", "تكبير / تصغير الصورة", 100, 300, 5, Math.round(cardState.img.zoom * 100))}
                 <div class="chips-row">${fpresets}</div>
                 ${sliderHTML("brightness", "السطوع", 50, 150, 1, cardState.filter.brightness)}
                 ${sliderHTML("contrast", "التباين", 50, 160, 1, cardState.filter.contrast)}
@@ -371,10 +387,27 @@
     // المنزلقات
     view.querySelectorAll(".frange").forEach(inp => inp.addEventListener("input", () => {
       const k = inp.dataset.key, val = parseFloat(inp.value);
-      cardState.filter[k] = k === "dark" ? val / 100 : val;
+      if (k === "textScale") cardState.textScale = val / 100;
+      else if (k === "zoom") cardState.img.zoom = val / 100;
+      else cardState.filter[k] = (k === "dark" ? val / 100 : val);
       const vlab = document.getElementById("v_" + k); if (vlab) vlab.textContent = inp.value;
       drawCard();
     }));
+    // ألوان النص
+    view.querySelectorAll("#textColors .swatch[data-col]").forEach(b => b.addEventListener("click", () => {
+      cardState.textColor = b.dataset.col;
+      view.querySelectorAll("#textColors .swatch").forEach(x => x.classList.toggle("active", x === b));
+      drawCard();
+    }));
+    const pick = view.querySelector("#textColorPick");
+    if (pick) pick.addEventListener("input", () => {
+      cardState.textColor = pick.value;
+      view.querySelectorAll("#textColors .swatch").forEach(x => x.classList.remove("active"));
+      pick.parentElement.classList.add("active");
+      drawCard();
+    });
+    // تحريك الصورة بالسحب داخل المعاينة
+    bindCanvasDrag();
     // التصميم
     view.querySelectorAll(".theme-dot").forEach(b => b.addEventListener("click", () => {
       cardState.theme = parseInt(b.dataset.t, 10);
@@ -402,6 +435,29 @@
     view.querySelector("#downloadCard").addEventListener("click", () => exportCard("download"));
     view.querySelector("#shareCard").addEventListener("click", () => exportCard("share"));
     view.querySelector("#copyCard").addEventListener("click", copyCardText);
+  }
+  function bindCanvasDrag() {
+    const cv = view.querySelector("#cardCanvas"); if (!cv) return;
+    let dragging = false, lx = 0, ly = 0;
+    const ratio = () => cv.width / (cv.clientWidth || cv.width);
+    cv.addEventListener("pointerdown", (e) => {
+      if (!cardState.bgImage) return;
+      dragging = true; lx = e.clientX; ly = e.clientY;
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      cv.classList.add("grabbing");
+    });
+    cv.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const r = ratio();
+      cardState.img.ox += (e.clientX - lx) * r;
+      cardState.img.oy += (e.clientY - ly) * r;
+      lx = e.clientX; ly = e.clientY;
+      drawCard();
+    });
+    const end = () => { dragging = false; cv.classList.remove("grabbing"); };
+    cv.addEventListener("pointerup", end);
+    cv.addEventListener("pointercancel", end);
+    cv.addEventListener("pointerleave", end);
   }
   function bindLibItems() {
     view.querySelectorAll(".lib-item").forEach(b => b.addEventListener("click", () => {
@@ -442,6 +498,8 @@
       const img = new Image();
       img.onload = () => {
         cardState.bgImage = img;
+        cardState.img = { zoom: 1, ox: 0, oy: 0 };
+        const z = view.querySelector('.frange[data-key="zoom"]'); if (z) { z.value = 100; const zv = document.getElementById("v_zoom"); if (zv) zv.textContent = "100"; }
         const fp = view.querySelector("#filterPanel"); if (fp) fp.classList.remove("hidden");
         drawCard();
         const pv = document.getElementById("cardPreview"); if (pv) pv.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -451,11 +509,15 @@
     };
     reader.readAsDataURL(file);
   }
-  function drawImageCover(ctx, img, W, H) {
-    const ir = img.width / img.height, cr = W / H;
-    let dw, dh, dx, dy;
-    if (ir > cr) { dh = H; dw = H * ir; dx = (W - dw) / 2; dy = 0; }
-    else { dw = W; dh = W / ir; dx = 0; dy = (H - dh) / 2; }
+  function drawBg(ctx, img, W, H, t) {
+    const cover = Math.max(W / img.width, H / img.height);
+    const s = cover * (t.zoom || 1);
+    const dw = img.width * s, dh = img.height * s;
+    let dx = (W - dw) / 2 + (t.ox || 0), dy = (H - dh) / 2 + (t.oy || 0);
+    // منع ظهور فراغات عند الحواف
+    dx = Math.min(0, Math.max(W - dw, dx));
+    dy = Math.min(0, Math.max(H - dh, dy));
+    t.ox = dx - (W - dw) / 2; t.oy = dy - (H - dh) / 2;
     ctx.drawImage(img, dx, dy, dw, dh);
   }
 
@@ -471,7 +533,7 @@
 
     if (hasImg) {
       ctx.save(); ctx.filter = filterString(cardState.filter);
-      drawImageCover(ctx, cardState.bgImage, W, H); ctx.restore();
+      drawBg(ctx, cardState.bgImage, W, H, cardState.img); ctx.restore();
       const d = cardState.filter.dark;
       const ov = ctx.createLinearGradient(0, 0, 0, H);
       ov.addColorStop(0, `rgba(8,11,14,${Math.min(0.95, d * 0.75)})`);
@@ -512,7 +574,12 @@
       if (totalH <= maxH && widest <= maxW) break;
       size -= u * 0.006;
     }
+    // تطبيق حجم النص المخصّص ثم إعادة اللفّ
+    size *= cardState.textScale || 1;
+    ctx.font = `${size}px 'Amiri Quran', serif`;
+    lines = wrapLines(ctx, cardState.text, maxW);
     if (hasImg) { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = u * 0.022; ctx.shadowOffsetY = u * 0.004; }
+    if (cardState.textColor) fg = cardState.textColor;
     ctx.fillStyle = fg; ctx.font = `${size}px 'Amiri Quran', serif`;
     const lh = size * 1.75, startY = (areaTop + areaBot) / 2 - ((lines.length - 1) * lh) / 2;
     lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
