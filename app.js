@@ -287,10 +287,10 @@
 
   /* ============== تبويب البطاقات ============== */
   const SIZES = [
-    { id: "story", name: "ستوري · واتساب/سناب", short: "واتساب/سناب", w: 1080, h: 1920 },
-    { id: "square", name: "مربع · منشور", short: "مربع", w: 1440, h: 1440 },
-    { id: "portrait", name: "عمودي · انستقرام", short: "انستقرام", w: 1080, h: 1350 },
-    { id: "wide", name: "عريض · تويتر/فيسبوك", short: "عريض", w: 1280, h: 720 }
+    { id: "story", name: "ستوري · واتساب/سناب", short: "واتساب/سناب", w: 1440, h: 2560 },
+    { id: "square", name: "مربع · منشور", short: "مربع", w: 2000, h: 2000 },
+    { id: "portrait", name: "عمودي · انستقرام", short: "انستقرام", w: 1620, h: 2025 },
+    { id: "wide", name: "عريض · تويتر/فيسبوك", short: "عريض", w: 1920, h: 1080 }
   ];
   const FILTER_PRESETS = [
     { key: "original", name: "أصلي", f: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0 } },
@@ -658,6 +658,7 @@
     const th = CARD_THEMES[cardState.theme];
     const hasImg = !!cardState.bgImage;
     let fg, sub, accent = th.accent;
+    ctx.imageSmoothingEnabled = true; try { ctx.imageSmoothingQuality = "high"; } catch (e) {}
     ctx.clearRect(0, 0, W, H);
 
     const g = ctx.createLinearGradient(0, 0, W, H);
