@@ -313,6 +313,7 @@
           <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
           <div class="card-actions">
             <button class="act primary" id="shareCard">📤 مشاركة</button>
+            <button class="act" id="videoCard">🎬 فيديو</button>
             <button class="act" id="downloadCard">📥 تنزيل</button>
             <button class="act" id="randomCard">🎲 عشوائي</button>
             <button class="act" id="copyCard">📋 نسخ</button>
@@ -482,6 +483,10 @@
     view.querySelector("#downloadCard").addEventListener("click", () => exportCard("download"));
     view.querySelector("#shareCard").addEventListener("click", () => exportCard("share"));
     view.querySelector("#copyCard").addEventListener("click", copyCardText);
+    view.querySelector("#videoCard").addEventListener("click", (e) => {
+      const btn = e.currentTarget; btn.disabled = true; const old = btn.textContent; btn.textContent = "⏳ جارٍ…";
+      generateVideo("share").finally(() => { btn.disabled = false; btn.textContent = old; });
+    });
   }
   function bindCanvasDrag() {
     const cv = view.querySelector("#cardCanvas"); if (!cv) return;
@@ -567,24 +572,31 @@
     ctx.drawImage(img, dx, dy, dw, dh);
   }
 
+  const STATIC_ANIM = { bgZoom: 1, textAlpha: 1, textDy: 0, uiAlpha: 1 };
   function drawCard() {
     const canvas = document.getElementById("cardCanvas"); if (!canvas) return;
-    const sz = SIZES[cardState.sizeIdx], W = sz.w, H = sz.h, u = Math.min(W, H);
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext("2d");
+    const sz = SIZES[cardState.sizeIdx];
+    canvas.width = sz.w; canvas.height = sz.h;
+    renderCardTo(canvas.getContext("2d"), sz.w, sz.h, STATIC_ANIM);
+  }
+
+  // محرّك الرسم المشترك بين الصورة والفيديو. anim يتحكّم بالحركة والظهور التدريجي.
+  function renderCardTo(ctx, W, H, anim) {
+    anim = anim || STATIC_ANIM;
+    const u = Math.min(W, H);
     const th = CARD_THEMES[cardState.theme];
     const hasImg = !!cardState.bgImage;
     let fg, sub, accent = th.accent;
     ctx.clearRect(0, 0, W, H);
 
-    // الخلفية المتدرّجة دائمًا (تظهر خلف الصورة عند تصغيرها)
     const g = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
     if (hasImg) {
       ctx.save(); ctx.filter = filterString(cardState.filter);
-      drawBg(ctx, cardState.bgImage, W, H, cardState.img); ctx.restore();
+      drawBg(ctx, cardState.bgImage, W, H, { zoom: (cardState.img.zoom || 1) * anim.bgZoom, ox: cardState.img.ox, oy: cardState.img.oy });
+      ctx.restore();
       const d = cardState.filter.dark;
       const ov = ctx.createLinearGradient(0, 0, 0, H);
       ov.addColorStop(0, `rgba(8,11,14,${Math.min(0.95, d * 0.75)})`);
@@ -597,7 +609,6 @@
       fg = th.fg; sub = th.sub;
     }
 
-    // الإطار (مزدوج/بسيط/بدون)
     const fm = u * 0.045;
     if (cardState.frame !== "none") {
       ctx.strokeStyle = hexA(accent, 0.55); ctx.lineWidth = Math.max(2, u * 0.0035);
@@ -609,7 +620,8 @@
     }
 
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
-    // العنوان (إن وُجد) أو زخرفة علوية
+    // العنوان أو الزخرفة (يخضع لظهور uiAlpha)
+    ctx.globalAlpha = anim.uiAlpha;
     if (cardState.title) {
       let ts = u * 0.042;
       ctx.font = `700 ${ts}px 'Tajawal', sans-serif`;
@@ -622,6 +634,7 @@
       ctx.fillStyle = accent; ctx.font = `${Math.round(u * 0.042)}px 'Amiri Quran', serif`;
       ctx.fillText("۞", W / 2, H * 0.135);
     }
+    ctx.globalAlpha = 1;
 
     // النص الرئيسي — ملاءمة تلقائية
     const maxW = W * 0.80, areaTop = H * 0.20, areaBot = H * 0.82, maxH = areaBot - areaTop;
@@ -631,29 +644,28 @@
     while (size >= u * 0.022) {
       ctx.font = `${size}px 'Amiri Quran', serif`;
       lines = wrapLines(ctx, cardState.text, maxW);
-      const lh = size * 1.75, totalH = lines.length * lh;
+      const lh0 = size * 1.75, totalH = lines.length * lh0;
       const widest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
       if (totalH <= maxH && widest <= maxW) break;
       size -= u * 0.006;
     }
-    // تطبيق حجم النص المخصّص ثم إعادة اللفّ
     size *= cardState.textScale || 1;
     ctx.font = `${size}px 'Amiri Quran', serif`;
     lines = wrapLines(ctx, cardState.text, maxW);
+    ctx.globalAlpha = anim.textAlpha;
     if (hasImg) { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = u * 0.022; ctx.shadowOffsetY = u * 0.004; }
-    if (cardState.textColor) fg = cardState.textColor;
-    ctx.fillStyle = fg; ctx.font = `${size}px 'Amiri Quran', serif`;
-    const lh = size * 1.75, startY = (areaTop + areaBot) / 2 - ((lines.length - 1) * lh) / 2;
+    ctx.fillStyle = cardState.textColor || fg;
+    const lh = size * 1.75, startY = (areaTop + areaBot) / 2 - ((lines.length - 1) * lh) / 2 + (anim.textDy || 0);
     lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
     ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.globalAlpha = 1;
 
-    // المصدر
+    // المصدر + العلامة + QR (ظهور تدريجي)
+    ctx.globalAlpha = anim.uiAlpha;
     if (cardState.source) {
       ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.030)}px 'Amiri', 'Tajawal', sans-serif`;
       ctx.fillText("﴿ " + cardState.source + " ﴾", W / 2, areaBot + u * 0.04);
     }
-
-    // العلامة: اسم مختصر + رمز QR للوصول (بدل الدومين الطويل)
     ctx.fillStyle = hexA(accent, 0.95);
     ctx.font = `700 ${Math.round(u * 0.030)}px 'Tajawal', sans-serif`;
     ctx.fillText("📿 أذكار", W / 2, H - u * 0.066);
@@ -663,9 +675,62 @@
       roundRect(ctx, qx - pad, qy - pad, q + pad * 2, q + pad * 2, u * 0.012); ctx.fill();
       ctx.drawImage(qrImg, qx, qy, q, q);
       ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.019)}px 'Tajawal', sans-serif`;
-      ctx.textAlign = "center";
       ctx.fillText("امسح للوصول", qx + q / 2, qy + q + u * 0.028);
     }
+    ctx.globalAlpha = 1;
+  }
+
+  // توليد فيديو قصير متحرك (WebM) من تصميم البطاقة الحالي
+  async function generateVideo(mode) {
+    const test = document.createElement("canvas");
+    if (typeof MediaRecorder === "undefined" || !test.captureStream) { toast("متصفحك لا يدعم توليد الفيديو — جرّب Chrome"); return; }
+    const mimes = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    const mime = mimes.find(m => { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } });
+    if (!mime) { toast("تعذّر توليد الفيديو في هذا المتصفح"); return; }
+
+    const sz = SIZES[cardState.sizeIdx];
+    const sc = Math.min(1, 1080 / Math.max(sz.w, sz.h));
+    const W = Math.round(sz.w * sc), H = Math.round(sz.h * sc);
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+    try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+
+    const stream = c.captureStream(30);
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 });
+    const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise(res => { rec.onstop = res; });
+    toast("🎬 جارٍ توليد الفيديو… انتظر قليلًا");
+    rec.start();
+
+    const DUR = 7000, ease = x => 1 - Math.pow(1 - x, 3), start = performance.now();
+    await new Promise(res => {
+      function frame(now) {
+        const el = now - start;
+        const inT = Math.min(1, el / 1400);
+        const uiT = Math.min(1, Math.max(0, el - 1100) / 1300);
+        renderCardTo(ctx, W, H, {
+          bgZoom: 1 + 0.07 * ease(Math.min(1, el / DUR)),
+          textAlpha: ease(inT),
+          textDy: (1 - ease(inT)) * H * 0.03,
+          uiAlpha: ease(uiT)
+        });
+        if (el < DUR) requestAnimationFrame(frame); else res();
+      }
+      requestAnimationFrame(frame);
+    });
+    rec.stop(); await stopped;
+
+    const blob = new Blob(chunks, { type: "video/webm" });
+    const file = new File([blob], "thikr.webm", { type: "video/webm" });
+    if (mode === "share" && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: cardTextForShare() }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "ذكر.webm";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 6000);
+    toast("تم توليد الفيديو ✓");
   }
 
   function paintPattern(ctx, W, H, th) {
