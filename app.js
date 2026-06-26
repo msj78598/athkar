@@ -8,7 +8,7 @@
   const themeBtn = document.getElementById("themeBtn");
   const tabbar = document.getElementById("tabbar");
 
-  const SITE = "msj78598.github.io/athkar";
+  const SITE = "athkar.vercel.app";
   const APP_NAME = "أذكار";
   let currentTab = "athkar";
   let goBack = null; // وجهة زر الرجوع حسب الشاشة الحالية
