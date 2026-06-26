@@ -45,6 +45,7 @@
     switchTab(btn.dataset.tab);
   });
   function switchTab(tab) {
+    stopAudio();
     currentTab = tab;
     tabbar.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
     backBtn.classList.add("hidden");
@@ -74,12 +75,107 @@
         <h3>${cat.title}</h3><p>${done}/${cat.items.length} مكتمل</p></div>`;
     });
     html += "</div>";
+    // قسم حصن المسلم الكامل
+    if (typeof HISN !== "undefined") {
+      html += `<div class="section-label">📕 حصن المسلم كامل — ${HISN.length} بابًا</div>
+        <input id="hisnSearch" class="hisn-search" type="search" placeholder="🔍 ابحث في أبواب حصن المسلم…" />
+        <div class="hisn-list" id="hisnList"></div>`;
+    }
     view.innerHTML = html;
     view.querySelectorAll(".cat-card").forEach(el => el.addEventListener("click", () => renderCategory(el.dataset.cat)));
+    if (typeof HISN !== "undefined") {
+      renderHisnList("");
+      const s = document.getElementById("hisnSearch");
+      s.addEventListener("input", () => renderHisnList(s.value));
+    }
     window.scrollTo(0, 0);
   }
   function countDone(cat) {
     let d = 0; cat.items.forEach((it, i) => { if (getRemaining(cat.id, i, it.count) === 0) d++; }); return d;
+  }
+
+  /* ----- حصن المسلم الكامل ----- */
+  function hcid(id) { return "h" + id; }
+  function renderHisnList(filter) {
+    const box = document.getElementById("hisnList"); if (!box) return;
+    const q = (filter || "").trim();
+    const list = q ? HISN.filter(c => c.title.includes(q)) : HISN;
+    if (!list.length) { box.innerHTML = `<p class="muted-line">لا نتائج مطابقة.</p>`; return; }
+    box.innerHTML = list.map(c => {
+      let done = 0; c.items.forEach((it, i) => { if (getRemaining(hcid(c.id), i, it.count) === 0) done++; });
+      const full = done === c.items.length;
+      return `<button class="hisn-row ${full ? "full" : ""}" data-id="${c.id}">
+        <span class="hr-title">${esc(c.title)}</span>
+        <span class="hr-count">${full ? "✓ " : ""}${c.items.length}</span></button>`;
+    }).join("");
+    box.querySelectorAll(".hisn-row").forEach(b => b.addEventListener("click", () => renderHisnChapter(parseInt(b.dataset.id, 10))));
+  }
+
+  function renderHisnChapter(id) {
+    const ch = HISN.find(c => c.id === id); if (!ch) return renderAthkarHome();
+    appTitle.textContent = ch.title;
+    backBtn.classList.remove("hidden");
+    const cid = hcid(id);
+    let html = `<div class="cat-head"><h2>${esc(ch.title)}</h2><p>من كتاب حصن المسلم</p></div>`;
+    if (ch.audio) html += `<button class="audio-btn" id="audioBtn" data-src="${ch.audio}">▶ استماع للباب</button>`;
+    html += `<div class="progress-wrap"><div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+      <div class="progress-label" id="progLabel"></div></div>`;
+    ch.items.forEach((item, idx) => {
+      const remaining = getRemaining(cid, idx, item.count);
+      const done = remaining === 0;
+      html += `<div class="dhikr-card ${done ? "done" : ""}" data-idx="${idx}">
+          <div class="dhikr-text">${item.text}</div>
+          <div class="dhikr-bottom"><span class="source">حصن المسلم</span>
+            <button class="counter ${done ? "complete" : ""}" data-idx="${idx}">
+              <span class="num">${done ? "✓" : remaining}</span><span class="lbl">${done ? "تم" : "اضغط"}</span></button></div></div>`;
+    });
+    html += `<button class="reset-cat" id="resetCat">إعادة ضبط هذا الباب</button>`;
+    view.innerHTML = html;
+    view.querySelectorAll(".counter").forEach(btn =>
+      btn.addEventListener("click", (e) => { e.stopPropagation(); tapHisn(ch, cid, parseInt(btn.dataset.idx, 10)); }));
+    document.getElementById("resetCat").addEventListener("click", () => {
+      if (progress[cid]) { delete progress[cid]; saveProgress(); } renderHisnChapter(id);
+    });
+    const ab = document.getElementById("audioBtn");
+    if (ab) ab.addEventListener("click", () => toggleAudio(ab));
+    updateHisnProgress(ch, cid); window.scrollTo(0, 0);
+  }
+  function tapHisn(ch, cid, idx) {
+    const item = ch.items[idx];
+    let r = getRemaining(cid, idx, item.count);
+    r = r <= 0 ? item.count : r - 1;
+    setRemaining(cid, idx, r);
+    vibrate(r === 0 ? [12, 40, 12] : 10);
+    const card = view.querySelector(`.dhikr-card[data-idx="${idx}"]`);
+    const btn = view.querySelector(`.counter[data-idx="${idx}"]`);
+    const done = r === 0;
+    btn.querySelector(".num").textContent = done ? "✓" : r;
+    btn.querySelector(".lbl").textContent = done ? "تم" : "اضغط";
+    btn.classList.toggle("complete", done); card.classList.toggle("done", done);
+    updateHisnProgress(ch, cid);
+  }
+  function updateHisnProgress(ch, cid) {
+    const total = ch.items.length;
+    let done = 0; ch.items.forEach((it, i) => { if (getRemaining(cid, i, it.count) === 0) done++; });
+    const pct = Math.round((done / total) * 100);
+    const fill = document.getElementById("progFill"), label = document.getElementById("progLabel");
+    if (fill) fill.style.width = pct + "%";
+    if (label) label.textContent = `${done} من ${total} (${pct}%)`;
+  }
+
+  let currentAudio = null;
+  function stopAudio() { if (currentAudio) { try { currentAudio.pause(); } catch (e) {} } }
+  function toggleAudio(btn) {
+    if (currentAudio && !currentAudio.paused) {
+      currentAudio.pause(); btn.textContent = "▶ استماع للباب"; return;
+    }
+    if (!currentAudio || currentAudio._src !== btn.dataset.src) {
+      if (currentAudio) currentAudio.pause();
+      currentAudio = new Audio(btn.dataset.src); currentAudio._src = btn.dataset.src;
+      currentAudio.addEventListener("ended", () => { btn.textContent = "▶ استماع للباب"; });
+      currentAudio.addEventListener("error", () => { toast("تعذّر تشغيل الصوت"); btn.textContent = "▶ استماع للباب"; });
+    }
+    currentAudio.play().then(() => btn.textContent = "⏸ إيقاف").catch(() => toast("تعذّر تشغيل الصوت"));
   }
 
   function renderCategory(catId) {
@@ -106,7 +202,6 @@
     document.getElementById("resetCat").addEventListener("click", () => {
       if (progress[cat.id]) { delete progress[cat.id]; saveProgress(); } renderCategory(cat.id);
     });
-    backBtn.onclick = renderAthkarHome;
     updateProgress(cat); window.scrollTo(0, 0);
   }
   function tapCounter(cat, idx) {
@@ -511,7 +606,7 @@
     themeBtn.textContent = dark ? "☀" : "☾";
     localStorage.setItem("athkar_theme", dark ? "dark" : "light");
   });
-  backBtn.addEventListener("click", () => { if (currentTab === "athkar") renderAthkarHome(); });
+  backBtn.addEventListener("click", () => { stopAudio(); if (currentTab === "athkar") renderAthkarHome(); });
 
   initTheme();
   renderAthkarHome();

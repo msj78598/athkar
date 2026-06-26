@@ -267,6 +267,32 @@ body {
 .err { color: #c0392b; }
 .stale { color: var(--accent); padding: 10px; font-size: .85rem; }
 
+/* ===== حصن المسلم ===== */
+.hisn-search {
+  width: 100%; padding: 13px 16px; border-radius: 13px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font-family: "Tajawal"; font-size: 1rem; margin-bottom: 12px;
+}
+.hisn-list { display: flex; flex-direction: column; gap: 8px; }
+.hisn-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 15px 16px; border-radius: 13px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); cursor: pointer; text-align: right;
+  font-family: "Tajawal"; font-weight: 500; font-size: 1.02rem; transition: border-color .2s, transform .12s;
+}
+.hisn-row:active { transform: scale(.99); }
+.hisn-row:hover { border-color: var(--accent); }
+.hisn-row.full { border-color: var(--accent); }
+.hr-title { flex: 1; }
+.hr-count { flex: 0 0 auto; background: var(--surface-2); color: var(--text-muted); border-radius: 99px; padding: 3px 12px; font-size: .82rem; font-weight: 700; }
+.hisn-row.full .hr-count { background: var(--accent); color: #0c1716; }
+.audio-btn {
+  display: block; width: 100%; padding: 13px; margin-bottom: 14px; border-radius: 13px;
+  border: 1px solid var(--accent); background: transparent; color: var(--accent);
+  font-family: "Tajawal"; font-weight: 700; font-size: 1rem; cursor: pointer;
+}
+.audio-btn:active { transform: scale(.98); }
+.muted-line { text-align: center; color: var(--text-muted); padding: 16px; }
+
 /* ===== Toast ===== */
 #toast {
   position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
