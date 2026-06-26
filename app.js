@@ -42,7 +42,8 @@
     progress[catId][idx] = val; saveProgress();
   }
 
-  const ICONS = { sunrise: "🌅", moon: "🌙", mosque: "🕌", bed: "🛏️", sun: "☀️", beads: "📿", parents: "👪" };
+  const ICONS = { sunrise: "🌅", moon: "🌙", mosque: "🕌", bed: "🛏️", sun: "☀️", beads: "📿", parents: "👪", anbiya: "⭐", ruqya: "🛡️" };
+  if (typeof ADHKAR_EXTRA !== "undefined" && Array.isArray(ADHKAR_EXTRA)) { try { ADHKAR.push.apply(ADHKAR, ADHKAR_EXTRA); } catch (e) {} }
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
   function vibrate(p) { if (navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
 
