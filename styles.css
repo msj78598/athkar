@@ -182,8 +182,8 @@ body {
 @media (prefers-reduced-motion: reduce) { .tk-track { animation: none; } }
 
 /* ===== شريط التبويب السفلي ===== */
+.bottom-dock { position: sticky; bottom: 0; z-index: 20; }
 .tabbar {
-  position: sticky; bottom: 0; z-index: 20;
   display: flex; background: var(--surface);
   border-top: 1px solid var(--line);
   padding: 6px 6px calc(env(safe-area-inset-bottom) + 6px);
@@ -386,11 +386,11 @@ body {
 .sr-dl.done { background: var(--accent); border-color: var(--accent); color: #0c1716; }
 .sr-dl:active { transform: scale(.92); }
 
-/* مشغّل عائم */
+/* مشغّل عائم (فوق شريط التبويب داخل الـ dock) */
 .player {
-  position: sticky; bottom: 0; z-index: 18;
   display: flex; align-items: center; gap: 8px; padding: 10px 12px;
   background: var(--primary); color: #fff; box-shadow: 0 -4px 20px rgba(0,0,0,.18);
+  border-bottom: 1px solid rgba(255,255,255,.12);
 }
 [data-theme="dark"] .player { background: var(--surface); border-top: 1px solid var(--accent); color: var(--text); }
 .player.hidden { display: none; }

@@ -30,24 +30,26 @@
     <!-- يُحقن المحتوى ديناميكيًا -->
   </main>
 
-  <div class="player hidden" id="player">
-    <button class="pl-btn" id="plPrev" aria-label="السابقة">⏮</button>
-    <button class="pl-btn main" id="plToggle" aria-label="تشغيل">▶</button>
-    <button class="pl-btn" id="plNext" aria-label="التالية">⏭</button>
-    <div class="pl-info">
-      <span id="plTitle"></span>
-      <input type="range" id="plSeek" min="0" max="100" value="0" />
+  <div class="bottom-dock">
+    <div class="player hidden" id="player">
+      <button class="pl-btn" id="plPrev" aria-label="السابقة">⏮</button>
+      <button class="pl-btn main" id="plToggle" aria-label="تشغيل">▶</button>
+      <button class="pl-btn" id="plNext" aria-label="التالية">⏭</button>
+      <div class="pl-info">
+        <span id="plTitle"></span>
+        <input type="range" id="plSeek" min="0" max="100" value="0" />
+      </div>
+      <button class="pl-btn" id="plClose" aria-label="إغلاق">✕</button>
     </div>
-    <button class="pl-btn" id="plClose" aria-label="إغلاق">✕</button>
-  </div>
 
-  <nav class="tabbar" id="tabbar">
-    <button class="tab active" data-tab="athkar"><span class="tab-ic">📿</span><span>الأذكار</span></button>
-    <button class="tab" data-tab="quran"><span class="tab-ic">🎧</span><span>القرآن</span></button>
-    <button class="tab" data-tab="cards"><span class="tab-ic">🎴</span><span>بطاقات</span></button>
-    <button class="tab" data-tab="deeds"><span class="tab-ic">🌿</span><span>أعمال</span></button>
-    <button class="tab" data-tab="prayer"><span class="tab-ic">🕌</span><span>المواقيت</span></button>
-  </nav>
+    <nav class="tabbar" id="tabbar">
+      <button class="tab active" data-tab="athkar"><span class="tab-ic">📿</span><span>الأذكار</span></button>
+      <button class="tab" data-tab="quran"><span class="tab-ic">🎧</span><span>القرآن</span></button>
+      <button class="tab" data-tab="cards"><span class="tab-ic">🎴</span><span>بطاقات</span></button>
+      <button class="tab" data-tab="deeds"><span class="tab-ic">🌿</span><span>أعمال</span></button>
+      <button class="tab" data-tab="prayer"><span class="tab-ic">🕌</span><span>المواقيت</span></button>
+    </nav>
+  </div>
 
   <script src="data/adhkar.js"></script>
   <script src="data/cards.js"></script>

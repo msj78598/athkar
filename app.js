@@ -165,7 +165,7 @@
       btn.addEventListener("click", (e) => { e.stopPropagation(); tapHisn(ch, cid, parseInt(btn.dataset.idx, 10)); }));
     view.querySelectorAll(".mini-act").forEach(btn => btn.addEventListener("click", () => {
       const it = ch.items[parseInt(btn.dataset.idx, 10)];
-      if (btn.dataset.act === "share") shareDhikr(it.text, "حصن المسلم"); else makeCard(it.text, "حصن المسلم");
+      if (btn.dataset.act === "share") shareDhikr(it.text, "حصن المسلم"); else makeCard(it.text, "حصن المسلم", ch.title);
     }));
     document.getElementById("resetCat").addEventListener("click", () => {
       if (progress[cid]) { delete progress[cid]; saveProgress(); } renderHisnChapter(id);
@@ -239,7 +239,7 @@
       btn.addEventListener("click", (e) => { e.stopPropagation(); tapCounter(cat, parseInt(btn.dataset.idx, 10)); }));
     view.querySelectorAll(".mini-act").forEach(btn => btn.addEventListener("click", () => {
       const it = cat.items[parseInt(btn.dataset.idx, 10)];
-      if (btn.dataset.act === "share") shareDhikr(it.text, it.source); else makeCard(it.text, it.source);
+      if (btn.dataset.act === "share") shareDhikr(it.text, it.source); else makeCard(it.text, it.source, cat.title);
     }));
     document.getElementById("resetCat").addEventListener("click", () => {
       if (progress[cat.id]) { delete progress[cat.id]; saveProgress(); } renderCategory(cat.id);
@@ -286,7 +286,7 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double"
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", title: ""
   };
   const FRAMES = [{ k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "none", n: "بدون" }];
   const TEXT_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#ffd97d", "#f5c6d6", "#bfe8ee", "#1c2625", "#0c1716"];
@@ -363,6 +363,7 @@
           <details class="ctl">
             <summary>✍️ اكتب ذكرك الخاص</summary>
             <div class="ctl-body custom-box">
+              <input id="customTitle" type="text" placeholder="العنوان (اختياري) — مثل: أذكار الصباح" value="${esc(cardState.title)}" />
               <textarea id="customText" rows="2" placeholder="اكتب ذكرًا أو دعاءً صحيحًا..."></textarea>
               <input id="customSource" type="text" placeholder="المصدر (اختياري)" />
               <button class="act primary full" id="applyCustom">توليد بطاقتي الخاصة</button>
@@ -470,6 +471,7 @@
       const t = view.querySelector("#customText").value.trim();
       if (!t) { view.querySelector("#customText").focus(); return; }
       cardState.text = t; cardState.source = view.querySelector("#customSource").value.trim();
+      cardState.title = view.querySelector("#customTitle").value.trim();
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     });
     view.querySelector("#randomCard").addEventListener("click", () => {
@@ -507,7 +509,8 @@
   function bindLibItems() {
     view.querySelectorAll(".lib-item").forEach(b => b.addEventListener("click", () => {
       const g = parseInt(b.dataset.g, 10), i = parseInt(b.dataset.i, 10), it = CARD_GROUPS[g].items[i];
-      cardState.text = it.t; cardState.source = it.s;
+      cardState.text = it.t; cardState.source = it.s; cardState.title = CARD_GROUPS[g].name;
+      const ti = view.querySelector("#customTitle"); if (ti) ti.value = cardState.title;
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     }));
   }
@@ -606,9 +609,19 @@
     }
 
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
-    // زخرفة علوية
-    ctx.fillStyle = accent; ctx.font = `${Math.round(u * 0.042)}px 'Amiri Quran', serif`;
-    ctx.fillText("۞", W / 2, H * 0.135);
+    // العنوان (إن وُجد) أو زخرفة علوية
+    if (cardState.title) {
+      let ts = u * 0.042;
+      ctx.font = `700 ${ts}px 'Tajawal', sans-serif`;
+      while (ctx.measureText(cardState.title).width > W * 0.78 && ts > u * 0.024) { ts -= u * 0.003; ctx.font = `700 ${ts}px 'Tajawal', sans-serif`; }
+      ctx.fillStyle = accent;
+      ctx.fillText(cardState.title, W / 2, H * 0.125);
+      ctx.strokeStyle = hexA(accent, 0.5); ctx.lineWidth = Math.max(1, u * 0.002);
+      ctx.beginPath(); ctx.moveTo(W / 2 - u * 0.07, H * 0.16); ctx.lineTo(W / 2 + u * 0.07, H * 0.16); ctx.stroke();
+    } else {
+      ctx.fillStyle = accent; ctx.font = `${Math.round(u * 0.042)}px 'Amiri Quran', serif`;
+      ctx.fillText("۞", W / 2, H * 0.135);
+    }
 
     // النص الرئيسي — ملاءمة تلقائية
     const maxW = W * 0.80, areaTop = H * 0.20, areaBot = H * 0.82, maxH = areaBot - areaTop;
@@ -692,7 +705,9 @@
   }
 
   function cardTextForShare() {
-    let t = cardState.text;
+    let t = "";
+    if (cardState.title) t += "【 " + cardState.title + " 】\n\n";
+    t += cardState.text;
     if (cardState.source) t += "\n﴿ " + cardState.source + " ﴾";
     return t + "\n\nتطبيق أذكار — https://" + SITE;
   }
@@ -862,8 +877,8 @@
     if (navigator.share) navigator.share({ text: t }).catch(() => {});
     else navigator.clipboard.writeText(t).then(() => toast("تم نسخ الذكر ✓")).catch(() => toast("تعذّر النسخ"));
   }
-  function makeCard(text, source) {
-    cardState.text = text; cardState.source = source || "";
+  function makeCard(text, source, title) {
+    cardState.text = text; cardState.source = source || ""; cardState.title = title || "";
     cardState.bgImage = null; cardState.textColor = ""; cardState.textScale = 1;
     switchTab("cards");
     toast("جهّزنا الذكر — صمّم بطاقتك وشاركها 🎴");
