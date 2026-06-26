@@ -470,3 +470,81 @@ details.ctl[open] > summary::after { transform: rotate(180deg); }
 @media (min-width: 1024px) {
   .container { max-width: 920px; }
 }
+
+/* ============================================================
+   تنظيم احترافي ومضغوط — مُحسّن للجوال (أيقونات أصغر، مسافات أضيق)
+   ============================================================ */
+.container { padding: 12px 13px 26px; }
+.app-header { padding: calc(env(safe-area-inset-top) + 10px) 14px 10px; }
+#appTitle { font-size: 1.12rem; }
+.icon-btn { width: 36px; height: 36px; font-size: 1.1rem; border-radius: 11px; }
+.intro { font-size: .88rem; line-height: 1.6; margin-bottom: 13px; }
+.sec-title { font-size: .95rem; margin: 15px 2px 8px; }
+
+/* الأشرطة المتحركة أنحف */
+.ticker { padding: 6px 0; border-radius: 9px; }
+.tk-item { font-size: .96rem; }
+
+/* صفوف الأذكار اليومية */
+.acat-list { gap: 7px; }
+.acat-row { padding: 10px 12px; gap: 10px; border-radius: 12px; }
+.ar-ic { font-size: 1.15rem; width: 24px; text-align: center; }
+.ar-txt b { font-size: .98rem; }
+.ar-txt small { font-size: .7rem; }
+.ar-count { font-size: .74rem; padding: 2px 9px; }
+
+/* حصن المسلم */
+.hisn-search { padding: 11px 13px; font-size: .92rem; margin-bottom: 9px; }
+.hisn-list { gap: 6px; }
+.hisn-row { padding: 11px 12px; font-size: .96rem; border-radius: 11px; }
+.hr-count { font-size: .76rem; padding: 2px 9px; }
+
+/* الأعمال الصالحة */
+.deeds-list { gap: 10px; }
+.deed-card { padding: 13px 14px; border-radius: 13px; }
+.deed-ic { font-size: 1.25rem; }
+.deed-head { gap: 8px; margin-bottom: 6px; }
+.deed-head h3 { font-size: 1rem; }
+.deed-desc { font-size: .9rem; line-height: 1.6; margin-bottom: 6px; }
+.deed-virtue { font-size: .92rem; line-height: 1.7; padding-right: 10px; margin-bottom: 9px; }
+.deed-share { padding: 8px 14px; font-size: .82rem; }
+
+/* القرآن */
+.surah-list { gap: 5px; }
+.surah-row { padding: 10px 12px; gap: 10px; border-radius: 11px; }
+.sr-num { width: 27px; height: 27px; font-size: .76rem; }
+.sr-name { font-size: 1.02rem; }
+.sr-dl { width: 36px; height: 36px; font-size: .98rem; }
+.quran-controls { gap: 8px; margin-bottom: 9px; }
+
+/* المواقيت */
+.prayer-row { padding: 12px 14px; border-radius: 13px; }
+.prayer-row .pr-name { font-size: 1rem; }
+.prayer-row .pr-time { font-size: 1rem; }
+.date-card { padding: 15px; }
+.date-card .hijri { font-size: 1.2rem; }
+.prayer-table { gap: 7px; }
+
+/* الأذكار التفصيلية */
+.dhikr-card { padding: 17px 15px 13px; margin-bottom: 13px; }
+.dhikr-text { font-size: 1.38rem; line-height: 2.15; margin-bottom: 13px; }
+.dhikr-actions { gap: 7px; margin-top: 10px; padding-top: 10px; }
+.mini-act { padding: 8px; font-size: .8rem; }
+
+/* شريط التبويب أصغر وأنظف */
+.tab { font-size: .7rem; padding: 7px 3px; gap: 2px; }
+.tab .tab-ic { font-size: 1.1rem; }
+
+/* عناصر تحكم البطاقات أصغر */
+.act { padding: 11px; font-size: .9rem; border-radius: 12px; }
+.chip { padding: 7px 12px; font-size: .82rem; }
+.card-actions { gap: 9px; margin-bottom: 14px; }
+.mini-label { font-size: .8rem; margin: 10px 2px 6px; }
+details.ctl > summary { padding: 12px 14px; }
+.about-link { padding: 11px; font-size: .88rem; margin: 16px 0 4px; }
+
+/* على الشاشات الأكبر: نصّ الذكر أوضح ومساحة أوسع */
+@media (min-width: 600px) {
+  .dhikr-text { font-size: 1.55rem; }
+  .acat-list, .hisn-list, .deeds-list, .surah-list { }
+}
