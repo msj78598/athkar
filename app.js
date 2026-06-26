@@ -286,9 +286,16 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", title: ""
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: ""
   };
-  const FRAMES = [{ k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "none", n: "بدون" }];
+  const FRAMES = [
+    { k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "corners", n: "زوايا" },
+    { k: "dashed", n: "متقطّع" }, { k: "ornate", n: "مزخرف" }, { k: "none", n: "بدون" }
+  ];
+  const PATTERNS = [
+    { k: "", n: "تلقائي" }, { k: "none", n: "بدون" }, { k: "dots", n: "نقاط" }, { k: "stars", n: "نجوم" },
+    { k: "rays", n: "أشعة" }, { k: "diamonds", n: "معيّنات" }, { k: "grid", n: "شبكة" }
+  ];
   const TEXT_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#ffd97d", "#f5c6d6", "#bfe8ee", "#1c2625", "#0c1716"];
   function filterString(f) {
     return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) blur(${f.blur}px)`;
@@ -331,6 +338,10 @@
           <div class="ctl-group">
             <div class="section-label">🖼️ الإطار</div>
             <div class="chips-row" id="frameRow">${FRAMES.map(f => `<button class="chip ${cardState.frame === f.k ? "active" : ""}" data-frame="${f.k}">${f.n}</button>`).join("")}</div>
+          </div>
+          <div class="ctl-group">
+            <div class="section-label">✨ الزخرفة (بدون صورة)</div>
+            <div class="chips-row" id="patternRow">${PATTERNS.map(p => `<button class="chip ${cardState.pattern === p.k ? "active" : ""}" data-pattern="${p.k}">${p.n}</button>`).join("")}</div>
           </div>
           <details class="ctl" open>
             <summary>✏️ حجم النص ولونه</summary>
@@ -461,6 +472,12 @@
       view.querySelectorAll("#frameRow .chip").forEach(x => x.classList.toggle("active", x === b));
       drawCard();
     }));
+    // الزخرفة
+    view.querySelectorAll("#patternRow .chip").forEach(b => b.addEventListener("click", () => {
+      cardState.pattern = b.dataset.pattern;
+      view.querySelectorAll("#patternRow .chip").forEach(x => x.classList.toggle("active", x === b));
+      drawCard();
+    }));
     view.querySelectorAll(".gchip").forEach(b => b.addEventListener("click", () => {
       const gi = parseInt(b.dataset.g, 10);
       view.querySelectorAll(".gchip").forEach(x => x.classList.toggle("active", x === b));
@@ -514,8 +531,9 @@
   function bindLibItems() {
     view.querySelectorAll(".lib-item").forEach(b => b.addEventListener("click", () => {
       const g = parseInt(b.dataset.g, 10), i = parseInt(b.dataset.i, 10), it = CARD_GROUPS[g].items[i];
-      cardState.text = it.t; cardState.source = it.s; cardState.title = CARD_GROUPS[g].name;
-      const ti = view.querySelector("#customTitle"); if (ti) ti.value = cardState.title;
+      // المكتبة العامة بلا عنوان — العنوان يليق فقط بالأذكار المرتبطة بمناسبة محددة
+      cardState.text = it.t; cardState.source = it.s; cardState.title = "";
+      const ti = view.querySelector("#customTitle"); if (ti) ti.value = "";
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     }));
   }
@@ -605,19 +623,13 @@
       ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
       fg = "#ffffff"; sub = "#ece3cd";
     } else {
-      paintPattern(ctx, W, H, th);
+      const pat = cardState.pattern || th.pattern;
+      if (pat && pat !== "none") paintPattern(ctx, W, H, th, pat);
       fg = th.fg; sub = th.sub;
     }
 
     const fm = u * 0.045;
-    if (cardState.frame !== "none") {
-      ctx.strokeStyle = hexA(accent, 0.55); ctx.lineWidth = Math.max(2, u * 0.0035);
-      roundRect(ctx, fm, fm, W - fm * 2, H - fm * 2, u * 0.026); ctx.stroke();
-      if (cardState.frame === "double") {
-        ctx.strokeStyle = hexA(accent, 0.25); ctx.lineWidth = Math.max(1.5, u * 0.0018);
-        roundRect(ctx, fm * 1.35, fm * 1.35, W - fm * 2.7, H - fm * 2.7, u * 0.02); ctx.stroke();
-      }
-    }
+    drawFrame(ctx, W, H, u, accent, cardState.frame);
 
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
     // العنوان أو الزخرفة (يخضع لظهور uiAlpha)
@@ -733,29 +745,67 @@
     toast("تم توليد الفيديو ✓");
   }
 
-  function paintPattern(ctx, W, H, th) {
+  function paintPattern(ctx, W, H, th, key) {
+    key = key || th.pattern;
     ctx.save();
     const u = Math.min(W, H), maxD = Math.max(W, H);
-    if (th.pattern === "dots") {
+    if (key === "dots") {
       ctx.fillStyle = hexA(th.accent, 0.10); const step = u * 0.065;
       for (let y = u * 0.1; y < H - u * 0.08; y += step) for (let x = u * 0.1; x < W - u * 0.08; x += step) {
         ctx.beginPath(); ctx.arc(x, y, u * 0.003, 0, 7); ctx.fill();
       }
-    } else if (th.pattern === "stars") {
+    } else if (key === "stars") {
       ctx.fillStyle = hexA(th.accent, 0.13); ctx.textAlign = "center"; ctx.font = `${Math.round(u * 0.024)}px serif`;
       [[.15, .18], [.85, .22], [.22, .82], [.82, .8], [.5, .14], [.13, .5], [.87, .52], [.48, .88]]
         .forEach(p => ctx.fillText("✦", W * p[0], H * p[1]));
-    } else if (th.pattern === "rays") {
+    } else if (key === "rays") {
       ctx.strokeStyle = hexA(th.accent, 0.06); ctx.lineWidth = 2;
       for (let i = 0; i < 24; i++) { ctx.beginPath(); ctx.moveTo(W / 2, H / 2); const ang = (Math.PI / 12) * i; ctx.lineTo(W / 2 + Math.cos(ang) * maxD, H / 2 + Math.sin(ang) * maxD); ctx.stroke(); }
-    } else if (th.pattern === "corners") {
-      ctx.strokeStyle = hexA(th.accent, 0.5); ctx.lineWidth = Math.max(2, u * 0.003);
-      const m = u * 0.11, L = u * 0.06;
-      [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]
-        .forEach(([x, y, sx, sy]) => { ctx.beginPath(); ctx.moveTo(x + L * sx, y); ctx.lineTo(x, y); ctx.lineTo(x, y + L * sy); ctx.stroke(); });
-    } else if (th.pattern === "frame") {
+    } else if (key === "diamonds") {
+      ctx.fillStyle = hexA(th.accent, 0.09); const s = u * 0.085, d = u * 0.006;
+      for (let y = u * 0.12; y < H - u * 0.1; y += s) for (let x = u * 0.12; x < W - u * 0.1; x += s) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-d, -d, d * 2, d * 2); ctx.restore();
+      }
+    } else if (key === "grid") {
+      ctx.strokeStyle = hexA(th.accent, 0.055); ctx.lineWidth = 1; const s = u * 0.1;
+      for (let x = u * 0.12; x < W - u * 0.08; x += s) { ctx.beginPath(); ctx.moveTo(x, u * 0.1); ctx.lineTo(x, H - u * 0.1); ctx.stroke(); }
+      for (let y = u * 0.12; y < H - u * 0.08; y += s) { ctx.beginPath(); ctx.moveTo(u * 0.1, y); ctx.lineTo(W - u * 0.1, y); ctx.stroke(); }
+    } else if (key === "frame") {
       ctx.strokeStyle = hexA(th.accent, 0.18); ctx.lineWidth = 1.5;
       for (let i = 0; i < 3; i++) { const o = u * 0.085 + i * u * 0.009; roundRect(ctx, o, o, W - 2 * o, H - 2 * o, u * 0.016); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+
+  // إطارات متنوّعة
+  function drawFrame(ctx, W, H, u, accent, style) {
+    if (!style || style === "none") return;
+    ctx.save();
+    const fm = u * 0.045, r = u * 0.026;
+    ctx.setLineDash([]);
+    ctx.strokeStyle = hexA(accent, 0.55); ctx.lineWidth = Math.max(2, u * 0.0035);
+    if (style === "corners") {
+      const m = fm * 1.1, L = u * 0.075; ctx.lineWidth = Math.max(2.5, u * 0.004);
+      [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]
+        .forEach(([x, y, sx, sy]) => { ctx.beginPath(); ctx.moveTo(x + L * sx, y); ctx.lineTo(x, y); ctx.lineTo(x, y + L * sy); ctx.stroke(); });
+      ctx.restore(); return;
+    }
+    if (style === "dashed") {
+      ctx.setLineDash([u * 0.02, u * 0.013]);
+      roundRect(ctx, fm, fm, W - 2 * fm, H - 2 * fm, r); ctx.stroke();
+      ctx.restore(); return;
+    }
+    // simple / double / ornate يشتركون في الإطار الخارجي
+    roundRect(ctx, fm, fm, W - 2 * fm, H - 2 * fm, r); ctx.stroke();
+    if (style === "double" || style === "ornate") {
+      const o = fm * 1.35;
+      ctx.strokeStyle = hexA(accent, 0.25); ctx.lineWidth = Math.max(1.5, u * 0.0018);
+      roundRect(ctx, o, o, W - 2 * o, H - 2 * o, u * 0.02); ctx.stroke();
+    }
+    if (style === "ornate") {
+      ctx.fillStyle = accent; const d = u * 0.013;
+      [[fm, fm], [W - fm, fm], [fm, H - fm], [W - fm, H - fm]]
+        .forEach(([x, y]) => { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-d / 2, -d / 2, d, d); ctx.restore(); });
     }
     ctx.restore();
   }
