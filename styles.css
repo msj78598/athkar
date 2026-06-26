@@ -565,3 +565,13 @@ body { min-height: 100dvh; }      /* ارتفاع ديناميكي يمنع ال
 img, canvas, video { max-width: 100%; }
 /* الصفوف الأفقية لا تتجاوز الشاشة */
 .chips-row, .theme-row, .swatch-row, .ticker { max-width: 100%; }
+
+/* ===== مصغّرات اختيار مقاس البطاقة (بجانب المعاينة) ===== */
+.size-thumbs { display: flex; justify-content: center; align-items: flex-end; gap: 14px; margin: 12px 0 14px; flex-wrap: wrap; }
+.size-thumb { background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 2px; }
+.size-thumb:active { transform: scale(.94); }
+.st-box { display: block; border: 2px solid var(--line); border-radius: 5px; background: var(--surface-2); transition: border-color .2s, background .2s; }
+.size-thumb.active .st-box { border-color: var(--accent); background: linear-gradient(135deg, var(--primary), var(--primary-soft)); }
+[data-theme="dark"] .size-thumb.active .st-box { background: linear-gradient(135deg, var(--accent-soft), transparent); }
+.st-label { font-family: "Tajawal"; font-size: .72rem; font-weight: 700; color: var(--text-muted); }
+.size-thumb.active .st-label { color: var(--accent); }

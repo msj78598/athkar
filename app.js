@@ -287,10 +287,10 @@
 
   /* ============== تبويب البطاقات ============== */
   const SIZES = [
-    { id: "square", name: "مربع · منشور", w: 1440, h: 1440 },
-    { id: "story", name: "ستوري · واتساب/سناب", w: 1080, h: 1920 },
-    { id: "portrait", name: "عمودي · انستقرام", w: 1080, h: 1350 },
-    { id: "wide", name: "عريض · تويتر/فيسبوك", w: 1280, h: 720 }
+    { id: "story", name: "ستوري · واتساب/سناب", short: "واتساب/سناب", w: 1080, h: 1920 },
+    { id: "square", name: "مربع · منشور", short: "مربع", w: 1440, h: 1440 },
+    { id: "portrait", name: "عمودي · انستقرام", short: "انستقرام", w: 1080, h: 1350 },
+    { id: "wide", name: "عريض · تويتر/فيسبوك", short: "عريض", w: 1280, h: 720 }
   ];
   const FILTER_PRESETS = [
     { key: "original", name: "أصلي", f: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0 } },
@@ -333,13 +333,19 @@
     let themes = CARD_THEMES.map((t, i) =>
       `<button class="theme-dot ${i === cardState.theme ? "active" : ""}" data-t="${i}" title="${t.name}"
         style="background:linear-gradient(135deg,${t.bg[0]},${t.bg[1]})"><span style="color:${t.accent}">۞</span></button>`).join("");
-    let sizes = SIZES.map((s, i) => `<button class="chip ${i === cardState.sizeIdx ? "active" : ""}" data-s="${i}">${s.name}</button>`).join("");
+    let sizeThumbs = SIZES.map((s, i) => {
+      const ar = s.w / s.h; let bw, bh;
+      if (ar <= 1) { bh = 40; bw = Math.round(40 * ar); } else { bw = 40; bh = Math.round(40 / ar); }
+      return `<button class="size-thumb ${i === cardState.sizeIdx ? "active" : ""}" data-s="${i}" title="${s.name}">
+        <span class="st-box" style="width:${bw}px;height:${bh}px"></span><span class="st-label">${s.short}</span></button>`;
+    }).join("");
     let fpresets = FILTER_PRESETS.map(p => `<button class="chip fchip ${p.key === cardState.filterKey ? "active" : ""}" data-fp="${p.key}">${p.name}</button>`).join("");
 
     view.innerHTML = `
       <div class="cards-layout">
         <div class="card-stage">
           <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
+          <div class="size-thumbs" id="sizeThumbs">${sizeThumbs}</div>
           <div class="card-actions">
             <button class="act primary" id="shareCard">📤 مشاركة</button>
             <button class="act" id="downloadCard">📥 تنزيل</button>
@@ -367,8 +373,6 @@
           <details class="ctl" open>
             <summary>🎨 التصميم</summary>
             <div class="ctl-body">
-              <div class="mini-label">المقاس (للمنصّات)</div>
-              <div class="chips-row" id="sizeRow">${sizes}</div>
               <div class="mini-label">الألوان</div>
               <div class="theme-row">${themes}</div>
               <div class="mini-label">🕌 الخلفية الدينية</div>
@@ -439,10 +443,10 @@
   }
 
   function bindCardEvents() {
-    // المقاس
-    view.querySelectorAll("#sizeRow .chip").forEach(b => b.addEventListener("click", () => {
+    // المقاس — مصغّرات بصرية بجانب البطاقة
+    view.querySelectorAll("#sizeThumbs .size-thumb").forEach(b => b.addEventListener("click", () => {
       cardState.sizeIdx = parseInt(b.dataset.s, 10);
-      view.querySelectorAll("#sizeRow .chip").forEach(x => x.classList.toggle("active", x === b));
+      view.querySelectorAll("#sizeThumbs .size-thumb").forEach(x => x.classList.toggle("active", x === b));
       drawCard();
     }));
     // رفع الصورة
