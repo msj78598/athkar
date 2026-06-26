@@ -407,7 +407,7 @@ const ADHKAR = [
   },
   {
     id: "tasbih",
-    title: "الباقيات الصالحات",
+    title: "تسبيحات وأذكار",
     subtitle: "أذكار يسيرة عظيمة الأجر، تُقال في أي وقت",
     icon: "beads",
     items: [
