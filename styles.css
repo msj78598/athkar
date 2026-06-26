@@ -164,19 +164,22 @@ body {
 @media (min-width: 600px) { .cat-grid { grid-template-columns: repeat(3, 1fr); } .dhikr-text { font-size: 1.65rem; } }
 
 /* ===== الأشرطة المتحركة ===== */
-.ticker-wrap { margin: -4px 0 18px; display: flex; flex-direction: column; gap: 8px; }
-.ticker { overflow: hidden; background: var(--primary); border-radius: 12px; padding: 9px 0; box-shadow: var(--shadow); }
-[data-theme="dark"] .ticker { background: var(--surface); border: 1px solid var(--line); }
-.tk-track { display: inline-flex; align-items: center; white-space: nowrap; will-change: transform; }
-.ticker.rtl .tk-track { animation: tk-rtl 34s linear infinite; }
-.ticker.ltr .tk-track { animation: tk-ltr 30s linear infinite; }
+.ticker-wrap { margin: -2px 0 16px; display: flex; flex-direction: column; gap: 7px; }
+.ticker { overflow: hidden; border-radius: 10px; padding: 7px 0; }
+.ticker.a { background: var(--primary); }
+.ticker.b { background: var(--surface); border: 1px solid var(--line); }
+[data-theme="dark"] .ticker.a { background: var(--surface); border: 1px solid var(--line); }
+.tk-track { display: inline-flex; align-items: center; white-space: nowrap; width: max-content; will-change: transform; }
+.ticker.a .tk-track { animation: tk-scroll 50s linear infinite; }
+.ticker.b .tk-track { animation: tk-scroll 44s linear infinite reverse; }
 .ticker:hover .tk-track { animation-play-state: paused; }
-.tk-item { font-family: "Amiri Quran", serif; font-size: 1.1rem; color: #fff; padding: 0 4px; }
-[data-theme="dark"] .tk-item { color: var(--primary); }
-.tk-dot { color: var(--accent); padding: 0 14px; font-size: .8rem; }
-@keyframes tk-rtl { from { transform: translateX(0); } to { transform: translateX(50%); } }
-@keyframes tk-ltr { from { transform: translateX(-50%); } to { transform: translateX(0); } }
-@media (prefers-reduced-motion: reduce) { .tk-track { animation-duration: 90s !important; } }
+.tk-item { font-family: "Amiri Quran", serif; font-size: 1.02rem; padding: 0 2px; }
+.ticker.a .tk-item { color: #fff; }
+[data-theme="dark"] .ticker.a .tk-item { color: var(--primary); }
+.ticker.b .tk-item { color: var(--primary); }
+.tk-dot { color: var(--accent); padding: 0 13px; font-size: .7rem; }
+@keyframes tk-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .tk-track { animation: none; } }
 
 /* ===== شريط التبويب السفلي ===== */
 .tabbar {
@@ -325,3 +328,44 @@ body {
 }
 [data-theme="dark"] #toast { background: var(--accent); color: #0c1716; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== تنظيم البطاقات + تخطيط سطح المكتب ===== */
+.cards-layout { display: block; }
+.card-controls { display: flex; flex-direction: column; gap: 4px; }
+.ctl-group { margin-bottom: 2px; }
+.card-controls .section-label { margin: 14px 0 8px; }
+
+details.ctl {
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+  margin-top: 10px; overflow: hidden;
+}
+details.ctl > summary {
+  cursor: pointer; padding: 14px 16px; list-style: none;
+  font-family: "Tajawal"; font-weight: 700; color: var(--primary);
+  display: flex; align-items: center; justify-content: space-between;
+}
+details.ctl > summary::-webkit-details-marker { display: none; }
+details.ctl > summary::after { content: "▾"; color: var(--text-muted); transition: transform .2s; }
+details.ctl[open] > summary::after { transform: rotate(180deg); }
+.ctl-body { padding: 0 14px 14px; }
+.ctl-body.custom-box { border: none; background: transparent; box-shadow: none; border-radius: 0; }
+.upload-label { margin: 0; }
+
+/* شريط التبويب: توسيط على الشاشات الكبيرة */
+.tabbar { justify-content: center; gap: 4px; }
+.tab { flex: 1 1 0; max-width: 150px; }
+
+@media (min-width: 760px) {
+  .container { max-width: 860px; }
+  .cards-layout {
+    display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 24px; align-items: start;
+  }
+  .card-stage { position: sticky; top: 86px; }
+  .card-actions { grid-template-columns: repeat(2, 1fr); }
+  .cat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .container { max-width: 920px; }
+}

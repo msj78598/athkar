@@ -64,11 +64,12 @@
   /* ============== تبويب الأذكار ============== */
   function tickerHTML() {
     const row = (arr, cls) => {
-      const items = arr.map(t => `<span class="tk-item">${esc(t)}</span>`).join('<span class="tk-dot">•</span>');
-      // نُكرّر المحتوى مرتين لحركة لا نهائية سلسة
-      return `<div class="ticker ${cls}"><div class="tk-track">${items}<span class="tk-dot">•</span>${items}<span class="tk-dot">•</span></div></div>`;
+      const one = arr.map(t => `<span class="tk-item">${esc(t)}</span>`).join('<span class="tk-dot">۞</span>');
+      // نكرّر المحتوى 4 مرات لضمان امتلاء الشاشة وحركة سلسة بلا فراغات
+      const seq = (one + '<span class="tk-dot">۞</span>').repeat(4);
+      return `<div class="ticker ${cls}"><div class="tk-track">${seq}</div></div>`;
     };
-    return `<div class="ticker-wrap">${row(TICKER_TASBIH, "rtl")}${row(TICKER_ISTIGHFAR, "ltr")}</div>`;
+    return `<div class="ticker-wrap">${row(TICKER_TASBIH, "a")}${row(TICKER_ISTIGHFAR, "b")}</div>`;
   }
 
   function renderAthkarHome() {
@@ -262,51 +263,65 @@
     if (!cardState.text) {
       const g = CARD_GROUPS[0].items[0]; cardState.text = g.t; cardState.source = g.s;
     }
-    let chips = CARD_GROUPS.map((g, i) => `<button class="chip ${i === 0 ? "active" : ""}" data-g="${i}">${g.icon} ${g.name}</button>`).join("");
+    let chips = CARD_GROUPS.map((g, i) => `<button class="chip gchip ${i === 0 ? "active" : ""}" data-g="${i}">${g.icon} ${g.name}</button>`).join("");
     let themes = CARD_THEMES.map((t, i) =>
       `<button class="theme-dot ${i === cardState.theme ? "active" : ""}" data-t="${i}" title="${t.name}"
         style="background:linear-gradient(135deg,${t.bg[0]},${t.bg[1]})"><span style="color:${t.accent}">۞</span></button>`).join("");
     let sizes = SIZES.map((s, i) => `<button class="chip ${i === cardState.sizeIdx ? "active" : ""}" data-s="${i}">${s.name}</button>`).join("");
-    let fpresets = FILTER_PRESETS.map(p => `<button class="chip ${p.key === cardState.filterKey ? "active" : ""}" data-fp="${p.key}">${p.name}</button>`).join("");
+    let fpresets = FILTER_PRESETS.map(p => `<button class="chip fchip ${p.key === cardState.filterKey ? "active" : ""}" data-fp="${p.key}">${p.name}</button>`).join("");
 
     view.innerHTML = `
-      <p class="intro">صمّم بطاقة ذكر بجودة عالية وشاركها في واتساب وسناب وغيرها — صدقة تنتشر بضغطة.</p>
-      <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
-      <div class="card-actions">
-        <button class="act primary" id="shareCard">📤 مشاركة</button>
-        <button class="act" id="downloadCard">📥 تنزيل</button>
-        <button class="act" id="randomCard">🎲 تصميم عشوائي</button>
-        <button class="act" id="copyCard">📋 نسخ النص</button>
+      <div class="cards-layout">
+        <div class="card-stage">
+          <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
+          <div class="card-actions">
+            <button class="act primary" id="shareCard">📤 مشاركة</button>
+            <button class="act" id="downloadCard">📥 تنزيل</button>
+            <button class="act" id="randomCard">🎲 عشوائي</button>
+            <button class="act" id="copyCard">📋 نسخ</button>
+          </div>
+        </div>
+        <div class="card-controls">
+          <div class="ctl-group">
+            <div class="section-label">📐 المقاس</div>
+            <div class="chips-row" id="sizeRow">${sizes}</div>
+          </div>
+          <div class="ctl-group">
+            <div class="section-label">🎨 التصميم</div>
+            <div class="theme-row">${themes}</div>
+          </div>
+          <details class="ctl">
+            <summary>📷 خلفية صورة وفلاتر</summary>
+            <div class="ctl-body">
+              <label class="act full upload-label">📷 رفع صورة من جهازك
+                <input type="file" id="photoInput" accept="image/*" hidden /></label>
+              <div class="filter-panel hidden" id="filterPanel">
+                <div class="chips-row">${fpresets}</div>
+                ${sliderHTML("brightness", "السطوع", 50, 150, 1, cardState.filter.brightness)}
+                ${sliderHTML("contrast", "التباين", 50, 160, 1, cardState.filter.contrast)}
+                ${sliderHTML("saturate", "التشبّع", 0, 200, 1, cardState.filter.saturate)}
+                ${sliderHTML("dark", "تعتيم لوضوح النص", 0, 95, 5, Math.round(cardState.filter.dark * 100))}
+                <button class="act full" id="removePhoto">✖ إزالة الصورة</button>
+              </div>
+            </div>
+          </details>
+          <details class="ctl">
+            <summary>✍️ اكتب ذكرك الخاص</summary>
+            <div class="ctl-body custom-box">
+              <textarea id="customText" rows="2" placeholder="اكتب ذكرًا أو دعاءً صحيحًا..."></textarea>
+              <input id="customSource" type="text" placeholder="المصدر (اختياري)" />
+              <button class="act primary full" id="applyCustom">توليد بطاقتي الخاصة</button>
+            </div>
+          </details>
+          <details class="ctl" open>
+            <summary>📚 اختر من المكتبة</summary>
+            <div class="ctl-body">
+              <div class="chips-row" id="libChips">${chips}</div>
+              <div class="lib-list" id="libList"></div>
+            </div>
+          </details>
+        </div>
       </div>
-
-      <div class="section-label">📐 المقاس (مثالي لكل منصّة)</div>
-      <div class="chips-row" id="sizeRow">${sizes}</div>
-
-      <div class="section-label">📷 خلفية صورة (اختياري)</div>
-      <label class="act full upload-label">📷 رفع صورة من جهازك
-        <input type="file" id="photoInput" accept="image/*" hidden /></label>
-      <div class="filter-panel hidden" id="filterPanel">
-        <div class="chips-row">${fpresets}</div>
-        ${sliderHTML("brightness", "السطوع", 50, 150, 1, cardState.filter.brightness)}
-        ${sliderHTML("contrast", "التباين", 50, 160, 1, cardState.filter.contrast)}
-        ${sliderHTML("saturate", "التشبّع", 0, 200, 1, cardState.filter.saturate)}
-        ${sliderHTML("dark", "تعتيم لوضوح النص", 0, 95, 5, Math.round(cardState.filter.dark * 100))}
-        <button class="act full" id="removePhoto">✖ إزالة الصورة</button>
-      </div>
-
-      <div class="section-label">🎨 التصميم (بدون صورة)</div>
-      <div class="theme-row">${themes}</div>
-
-      <div class="section-label">✍️ اكتب ذكرك الخاص</div>
-      <div class="custom-box">
-        <textarea id="customText" rows="2" placeholder="اكتب ذكرًا أو دعاءً صحيحًا..."></textarea>
-        <input id="customSource" type="text" placeholder="المصدر (اختياري)" />
-        <button class="act primary full" id="applyCustom">توليد بطاقتي الخاصة</button>
-      </div>
-
-      <div class="section-label">📚 أو اختر من المكتبة</div>
-      <div class="chips-row">${chips}</div>
-      <div class="lib-list" id="libList"></div>
     `;
 
     view.querySelector("#libList").innerHTML = libItemsHTML(0);
@@ -366,9 +381,9 @@
       view.querySelectorAll(".theme-dot").forEach(x => x.classList.toggle("active", x === b));
       drawCard();
     }));
-    view.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
+    view.querySelectorAll(".gchip").forEach(b => b.addEventListener("click", () => {
       const gi = parseInt(b.dataset.g, 10);
-      view.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === b));
+      view.querySelectorAll(".gchip").forEach(x => x.classList.toggle("active", x === b));
       view.querySelector("#libList").innerHTML = libItemsHTML(gi);
       bindLibItems();
     }));
