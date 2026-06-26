@@ -35,7 +35,7 @@
     progress[catId][idx] = val; saveProgress();
   }
 
-  const ICONS = { sunrise: "🌅", moon: "🌙", mosque: "🕌", bed: "🛏️", sun: "☀️", beads: "📿" };
+  const ICONS = { sunrise: "🌅", moon: "🌙", mosque: "🕌", bed: "🛏️", sun: "☀️", beads: "📿", parents: "👪" };
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
   function vibrate(p) { if (navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} }
 
@@ -227,7 +227,27 @@
   }
 
   /* ============== تبويب البطاقات ============== */
-  let cardState = { text: "", source: "", theme: 0 };
+  const SIZES = [
+    { id: "square", name: "مربع · منشور", w: 1440, h: 1440 },
+    { id: "story", name: "ستوري · واتساب/سناب", w: 1080, h: 1920 },
+    { id: "portrait", name: "عمودي · انستقرام", w: 1080, h: 1350 },
+    { id: "wide", name: "عريض · تويتر/فيسبوك", w: 1280, h: 720 }
+  ];
+  const FILTER_PRESETS = [
+    { key: "original", name: "أصلي", f: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0 } },
+    { key: "bw", name: "أبيض وأسود", f: { brightness: 102, contrast: 112, saturate: 0, sepia: 0, blur: 0 } },
+    { key: "warm", name: "دافئ", f: { brightness: 104, contrast: 104, saturate: 120, sepia: 30, blur: 0 } },
+    { key: "cool", name: "بارد", f: { brightness: 102, contrast: 106, saturate: 85, sepia: 0, blur: 0 } },
+    { key: "luxury", name: "فاخر", f: { brightness: 95, contrast: 118, saturate: 92, sepia: 12, blur: 0 } },
+    { key: "dreamy", name: "حالم", f: { brightness: 108, contrast: 98, saturate: 112, sepia: 0, blur: 2 } }
+  ];
+  let cardState = {
+    text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
+    filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 }
+  };
+  function filterString(f) {
+    return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) blur(${f.blur}px)`;
+  }
 
   function renderCards() {
     appTitle.textContent = "بطاقات الأذكار";
@@ -239,33 +259,59 @@
     let themes = CARD_THEMES.map((t, i) =>
       `<button class="theme-dot ${i === cardState.theme ? "active" : ""}" data-t="${i}" title="${t.name}"
         style="background:linear-gradient(135deg,${t.bg[0]},${t.bg[1]})"><span style="color:${t.accent}">۞</span></button>`).join("");
+    let sizes = SIZES.map((s, i) => `<button class="chip ${i === cardState.sizeIdx ? "active" : ""}" data-s="${i}">${s.name}</button>`).join("");
+    let fpresets = FILTER_PRESETS.map(p => `<button class="chip ${p.key === cardState.filterKey ? "active" : ""}" data-fp="${p.key}">${p.name}</button>`).join("");
 
     view.innerHTML = `
-      <p class="intro">صمّم بطاقة ذكر وشاركها في واتساب وغيره — صدقة تنتشر بضغطة.</p>
-      <div class="card-preview"><canvas id="cardCanvas" width="1080" height="1080"></canvas></div>
+      <p class="intro">صمّم بطاقة ذكر بجودة عالية وشاركها في واتساب وسناب وغيرها — صدقة تنتشر بضغطة.</p>
+      <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
       <div class="card-actions">
         <button class="act primary" id="shareCard">📤 مشاركة</button>
         <button class="act" id="downloadCard">📥 تنزيل</button>
         <button class="act" id="randomCard">🎲 تصميم عشوائي</button>
         <button class="act" id="copyCard">📋 نسخ النص</button>
       </div>
-      <div class="section-label">🎨 اختر التصميم</div>
+
+      <div class="section-label">📐 المقاس (مثالي لكل منصّة)</div>
+      <div class="chips-row" id="sizeRow">${sizes}</div>
+
+      <div class="section-label">📷 خلفية صورة (اختياري)</div>
+      <label class="act full upload-label">📷 رفع صورة من جهازك
+        <input type="file" id="photoInput" accept="image/*" hidden /></label>
+      <div class="filter-panel hidden" id="filterPanel">
+        <div class="chips-row">${fpresets}</div>
+        ${sliderHTML("brightness", "السطوع", 50, 150, 1, cardState.filter.brightness)}
+        ${sliderHTML("contrast", "التباين", 50, 160, 1, cardState.filter.contrast)}
+        ${sliderHTML("saturate", "التشبّع", 0, 200, 1, cardState.filter.saturate)}
+        ${sliderHTML("dark", "تعتيم لوضوح النص", 0, 95, 5, Math.round(cardState.filter.dark * 100))}
+        <button class="act full" id="removePhoto">✖ إزالة الصورة</button>
+      </div>
+
+      <div class="section-label">🎨 التصميم (بدون صورة)</div>
       <div class="theme-row">${themes}</div>
+
       <div class="section-label">✍️ اكتب ذكرك الخاص</div>
       <div class="custom-box">
         <textarea id="customText" rows="2" placeholder="اكتب ذكرًا أو دعاءً صحيحًا..."></textarea>
         <input id="customSource" type="text" placeholder="المصدر (اختياري)" />
         <button class="act primary full" id="applyCustom">توليد بطاقتي الخاصة</button>
       </div>
+
       <div class="section-label">📚 أو اختر من المكتبة</div>
       <div class="chips-row">${chips}</div>
       <div class="lib-list" id="libList"></div>
     `;
 
     view.querySelector("#libList").innerHTML = libItemsHTML(0);
+    if (cardState.bgImage) view.querySelector("#filterPanel").classList.remove("hidden");
     bindCardEvents();
     ensureFontsThenDraw();
     window.scrollTo(0, 0);
+  }
+
+  function sliderHTML(key, label, min, max, step, val) {
+    return `<div class="slider-box"><label>${label} <span id="v_${key}">${val}</span></label>
+      <input type="range" class="frange" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${val}" /></div>`;
   }
 
   function libItemsHTML(gi) {
@@ -274,6 +320,40 @@
   }
 
   function bindCardEvents() {
+    // المقاس
+    view.querySelectorAll("#sizeRow .chip").forEach(b => b.addEventListener("click", () => {
+      cardState.sizeIdx = parseInt(b.dataset.s, 10);
+      view.querySelectorAll("#sizeRow .chip").forEach(x => x.classList.toggle("active", x === b));
+      drawCard();
+    }));
+    // رفع الصورة
+    view.querySelector("#photoInput").addEventListener("change", onPhoto);
+    view.querySelector("#removePhoto").addEventListener("click", () => {
+      cardState.bgImage = null;
+      view.querySelector("#filterPanel").classList.add("hidden");
+      view.querySelector("#photoInput").value = "";
+      drawCard();
+    });
+    // فلاتر جاهزة
+    view.querySelectorAll("[data-fp]").forEach(b => b.addEventListener("click", () => {
+      const p = FILTER_PRESETS.find(x => x.key === b.dataset.fp); if (!p) return;
+      cardState.filterKey = p.key;
+      cardState.filter = Object.assign({}, p.f, { dark: cardState.filter.dark });
+      view.querySelectorAll("[data-fp]").forEach(x => x.classList.toggle("active", x === b));
+      ["brightness", "contrast", "saturate"].forEach(k => {
+        const inp = view.querySelector(`.frange[data-key="${k}"]`);
+        if (inp) { inp.value = cardState.filter[k]; const v = document.getElementById("v_" + k); if (v) v.textContent = cardState.filter[k]; }
+      });
+      drawCard();
+    }));
+    // المنزلقات
+    view.querySelectorAll(".frange").forEach(inp => inp.addEventListener("input", () => {
+      const k = inp.dataset.key, val = parseFloat(inp.value);
+      cardState.filter[k] = k === "dark" ? val / 100 : val;
+      const vlab = document.getElementById("v_" + k); if (vlab) vlab.textContent = inp.value;
+      drawCard();
+    }));
+    // التصميم
     view.querySelectorAll(".theme-dot").forEach(b => b.addEventListener("click", () => {
       cardState.theme = parseInt(b.dataset.t, 10);
       view.querySelectorAll(".theme-dot").forEach(x => x.classList.toggle("active", x === b));
@@ -333,81 +413,125 @@
     return lines;
   }
 
+  function onPhoto(e) {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        cardState.bgImage = img;
+        const fp = view.querySelector("#filterPanel"); if (fp) fp.classList.remove("hidden");
+        drawCard();
+        const pv = document.getElementById("cardPreview"); if (pv) pv.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
+      img.onerror = () => toast("تعذّر قراءة الصورة");
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  function drawImageCover(ctx, img, W, H) {
+    const ir = img.width / img.height, cr = W / H;
+    let dw, dh, dx, dy;
+    if (ir > cr) { dh = H; dw = H * ir; dx = (W - dw) / 2; dy = 0; }
+    else { dw = W; dh = W / ir; dx = 0; dy = (H - dh) / 2; }
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
   function drawCard() {
     const canvas = document.getElementById("cardCanvas"); if (!canvas) return;
-    const S = 1080, ctx = canvas.getContext("2d");
+    const sz = SIZES[cardState.sizeIdx], W = sz.w, H = sz.h, u = Math.min(W, H);
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
     const th = CARD_THEMES[cardState.theme];
-    ctx.clearRect(0, 0, S, S);
+    const hasImg = !!cardState.bgImage;
+    let fg, sub, accent = th.accent;
+    ctx.clearRect(0, 0, W, H);
 
-    // خلفية متدرّجة
-    const g = ctx.createLinearGradient(0, 0, S, S);
-    g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
-    paintPattern(ctx, S, th);
+    if (hasImg) {
+      ctx.save(); ctx.filter = filterString(cardState.filter);
+      drawImageCover(ctx, cardState.bgImage, W, H); ctx.restore();
+      const d = cardState.filter.dark;
+      const ov = ctx.createLinearGradient(0, 0, 0, H);
+      ov.addColorStop(0, `rgba(8,11,14,${Math.min(0.95, d * 0.75)})`);
+      ov.addColorStop(0.45, `rgba(8,11,14,${Math.min(0.97, d)})`);
+      ov.addColorStop(1, `rgba(8,11,14,${Math.min(1, d * 1.08)})`);
+      ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
+      fg = "#ffffff"; sub = "#ece3cd";
+    } else {
+      const g = ctx.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      paintPattern(ctx, W, H, th);
+      fg = th.fg; sub = th.sub;
+    }
 
-    // إطار
-    ctx.strokeStyle = hexA(th.accent, 0.55); ctx.lineWidth = 4;
-    roundRect(ctx, 46, 46, S - 92, S - 92, 28); ctx.stroke();
-    ctx.strokeStyle = hexA(th.accent, 0.25); ctx.lineWidth = 2;
-    roundRect(ctx, 62, 62, S - 124, S - 124, 22); ctx.stroke();
+    // إطار مزدوج
+    const fm = u * 0.045;
+    ctx.strokeStyle = hexA(accent, 0.55); ctx.lineWidth = Math.max(2, u * 0.0035);
+    roundRect(ctx, fm, fm, W - fm * 2, H - fm * 2, u * 0.026); ctx.stroke();
+    ctx.strokeStyle = hexA(accent, 0.25); ctx.lineWidth = Math.max(1.5, u * 0.0018);
+    roundRect(ctx, fm * 1.35, fm * 1.35, W - fm * 2.7, H - fm * 2.7, u * 0.02); ctx.stroke();
 
-    // زخرفة علوية
-    ctx.fillStyle = th.accent; ctx.font = "40px 'Amiri Quran', serif";
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
-    ctx.fillText("۞", S / 2, 150);
+    // زخرفة علوية
+    ctx.fillStyle = accent; ctx.font = `${Math.round(u * 0.042)}px 'Amiri Quran', serif`;
+    ctx.fillText("۞", W / 2, H * 0.135);
 
-    // النص الرئيسي — ملاءمة تلقائية للحجم
-    const maxW = S * 0.76, areaTop = S * 0.24, areaBot = S * 0.80, maxH = areaBot - areaTop;
+    // النص الرئيسي — ملاءمة تلقائية
+    const maxW = W * 0.80, areaTop = H * 0.20, areaBot = H * 0.82, maxH = areaBot - areaTop;
     const len = cardState.text.length;
-    let size = len < 18 ? 104 : len < 45 ? 78 : len < 90 ? 60 : len < 150 ? 47 : 38;
+    let size = (len < 18 ? 0.105 : len < 45 ? 0.078 : len < 90 ? 0.060 : len < 150 ? 0.047 : 0.038) * u;
     let lines;
-    while (size >= 26) {
-      ctx.font = `700 ${size}px 'Amiri Quran', serif`;
+    while (size >= u * 0.022) {
+      ctx.font = `${size}px 'Amiri Quran', serif`;
       lines = wrapLines(ctx, cardState.text, maxW);
-      const lh = size * 1.7, totalH = lines.length * lh;
+      const lh = size * 1.75, totalH = lines.length * lh;
       const widest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
       if (totalH <= maxH && widest <= maxW) break;
-      size -= 4;
+      size -= u * 0.006;
     }
-    ctx.fillStyle = th.fg;
-    const lh = size * 1.7, startY = (areaTop + areaBot) / 2 - ((lines.length - 1) * lh) / 2;
-    lines.forEach((l, i) => ctx.fillText(l, S / 2, startY + i * lh));
+    if (hasImg) { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = u * 0.022; ctx.shadowOffsetY = u * 0.004; }
+    ctx.fillStyle = fg; ctx.font = `${size}px 'Amiri Quran', serif`;
+    const lh = size * 1.75, startY = (areaTop + areaBot) / 2 - ((lines.length - 1) * lh) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
     // المصدر
     if (cardState.source) {
-      ctx.fillStyle = th.sub; ctx.font = "400 34px 'Amiri', 'Tajawal', sans-serif";
-      ctx.fillText("﴿ " + cardState.source + " ﴾", S / 2, areaBot + 36);
+      ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.030)}px 'Amiri', 'Tajawal', sans-serif`;
+      ctx.fillText("﴿ " + cardState.source + " ﴾", W / 2, areaBot + u * 0.04);
     }
 
     // العلامة (تنشر التطبيق)
-    ctx.fillStyle = hexA(th.accent, 0.9); ctx.font = "700 30px 'Tajawal', sans-serif";
-    ctx.fillText("📿 أذكار المسلم", S / 2, S - 96);
-    ctx.fillStyle = th.sub; ctx.font = "400 26px 'Tajawal', sans-serif";
-    ctx.fillText(SITE, S / 2, S - 58);
+    ctx.fillStyle = hexA(accent, 0.95); ctx.font = `700 ${Math.round(u * 0.028)}px 'Tajawal', sans-serif`;
+    ctx.fillText("📿 أذكار المسلم", W / 2, H - u * 0.085);
+    ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.024)}px 'Tajawal', sans-serif`;
+    ctx.fillText(SITE, W / 2, H - u * 0.05);
   }
 
-  function paintPattern(ctx, S, th) {
+  function paintPattern(ctx, W, H, th) {
     ctx.save();
-    const a = hexA(th.accent, 0.10);
+    const u = Math.min(W, H), maxD = Math.max(W, H);
     if (th.pattern === "dots") {
-      ctx.fillStyle = a;
-      for (let y = 110; y < S - 90; y += 70) for (let x = 110; x < S - 90; x += 70) {
-        ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
+      ctx.fillStyle = hexA(th.accent, 0.10); const step = u * 0.065;
+      for (let y = u * 0.1; y < H - u * 0.08; y += step) for (let x = u * 0.1; x < W - u * 0.08; x += step) {
+        ctx.beginPath(); ctx.arc(x, y, u * 0.003, 0, 7); ctx.fill();
       }
     } else if (th.pattern === "stars") {
-      ctx.fillStyle = hexA(th.accent, 0.13); ctx.font = "26px serif"; ctx.textAlign = "center";
-      const pts = [[160, 200], [920, 240], [240, 880], [880, 860], [540, 160], [140, 540], [940, 560], [520, 940]];
-      pts.forEach(p => ctx.fillText("✦", p[0], p[1]));
+      ctx.fillStyle = hexA(th.accent, 0.13); ctx.textAlign = "center"; ctx.font = `${Math.round(u * 0.024)}px serif`;
+      [[.15, .18], [.85, .22], [.22, .82], [.82, .8], [.5, .14], [.13, .5], [.87, .52], [.48, .88]]
+        .forEach(p => ctx.fillText("✦", W * p[0], H * p[1]));
     } else if (th.pattern === "rays") {
       ctx.strokeStyle = hexA(th.accent, 0.06); ctx.lineWidth = 2;
-      for (let i = 0; i < 24; i++) { ctx.beginPath(); ctx.moveTo(S / 2, S / 2); const ang = (Math.PI / 12) * i; ctx.lineTo(S / 2 + Math.cos(ang) * 900, S / 2 + Math.sin(ang) * 900); ctx.stroke(); }
+      for (let i = 0; i < 24; i++) { ctx.beginPath(); ctx.moveTo(W / 2, H / 2); const ang = (Math.PI / 12) * i; ctx.lineTo(W / 2 + Math.cos(ang) * maxD, H / 2 + Math.sin(ang) * maxD); ctx.stroke(); }
     } else if (th.pattern === "corners") {
-      ctx.strokeStyle = hexA(th.accent, 0.5); ctx.lineWidth = 3;
-      const c = [[120, 120, 1, 1], [S - 120, 120, -1, 1], [120, S - 120, 1, -1], [S - 120, S - 120, -1, -1]];
-      c.forEach(([x, y, sx, sy]) => { ctx.beginPath(); ctx.moveTo(x + 70 * sx, y); ctx.lineTo(x, y); ctx.lineTo(x, y + 70 * sy); ctx.stroke(); });
+      ctx.strokeStyle = hexA(th.accent, 0.5); ctx.lineWidth = Math.max(2, u * 0.003);
+      const m = u * 0.11, L = u * 0.06;
+      [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]
+        .forEach(([x, y, sx, sy]) => { ctx.beginPath(); ctx.moveTo(x + L * sx, y); ctx.lineTo(x, y); ctx.lineTo(x, y + L * sy); ctx.stroke(); });
     } else if (th.pattern === "frame") {
       ctx.strokeStyle = hexA(th.accent, 0.18); ctx.lineWidth = 1.5;
-      for (let i = 0; i < 3; i++) roundRect(ctx, 90 + i * 10, 90 + i * 10, S - 180 - i * 20, S - 180 - i * 20, 18), ctx.stroke();
+      for (let i = 0; i < 3; i++) { const o = u * 0.085 + i * u * 0.009; roundRect(ctx, o, o, W - 2 * o, H - 2 * o, u * 0.016); ctx.stroke(); }
     }
     ctx.restore();
   }
