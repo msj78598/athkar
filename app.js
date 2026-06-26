@@ -964,8 +964,10 @@
     appTitle.textContent = "أعمال صالحة";
     backBtn.classList.add("hidden");
     if (typeof DEEDS === "undefined") { view.innerHTML = `<p class="muted-line">لا يوجد محتوى.</p>`; return; }
-    let html = `<p class="intro">تذكير بأبواب الخير الثابتة في السنة — «من دلّ على خير فله مثل أجر فاعله».<br>افعلها وذكّر بها غيرك، ولك أجرٌ بكل من يعمل بها.</p><div class="deeds-list">`;
+    let html = `<p class="intro">أبواب الخير الثابتة في السنة مع فضلها (على نهج كتب الفضائل) — «من دلّ على خير فله مثل أجر فاعله».</p>`;
+    let lastSec = "";
     DEEDS.forEach((d, i) => {
+      if (d.sec !== lastSec) { if (lastSec) html += `</div>`; html += `<div class="sec-title">${esc(d.sec)}</div><div class="deeds-list">`; lastSec = d.sec; }
       html += `<div class="deed-card">
         <div class="deed-head"><span class="deed-ic">${d.icon}</span><h3>${esc(d.title)}</h3></div>
         <p class="deed-desc">${esc(d.desc)}</p>
@@ -973,7 +975,7 @@
         <div class="deed-foot"><span class="source">${esc(d.source)}</span>
           <button class="deed-share" data-i="${i}">📤 شارك</button></div></div>`;
     });
-    html += `</div>`;
+    if (lastSec) html += `</div>`;
     view.innerHTML = html;
     view.querySelectorAll(".deed-share").forEach(b => b.addEventListener("click", () => shareDeed(parseInt(b.dataset.i, 10))));
     window.scrollTo(0, 0);
