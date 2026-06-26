@@ -80,40 +80,32 @@
     backBtn.classList.add("hidden");
     goBack = null;
     let html = tickerHTML();
-    html += '<p class="intro">الأذكار الصحيحة الموثّقة بمصادرها.<br>اختر فئة لتبدأ، ويُحفظ تقدّمك تلقائيًا.</p><div class="cat-grid">';
+    // الأذكار اليومية والأدعية المختارة — صفوف مرتّبة موفّرة للمساحة
+    html += `<div class="sec-title">الأذكار اليومية والأدعية</div><div class="acat-list">`;
     ADHKAR.forEach(cat => {
-      const done = countDone(cat);
-      html += `<div class="cat-card" data-cat="${cat.id}"><div class="cat-icon">${ICONS[cat.icon] || "📿"}</div>
-        <h3>${cat.title}</h3><p>${done}/${cat.items.length} مكتمل</p></div>`;
+      const done = countDone(cat), full = done === cat.items.length;
+      html += `<button class="acat-row ${full ? "full" : ""}" data-cat="${cat.id}">
+        <span class="ar-ic">${ICONS[cat.icon] || "📿"}</span>
+        <span class="ar-txt"><b>${cat.title}</b><small>${cat.subtitle || ""}</small></span>
+        <span class="ar-count">${full ? "✓ " : ""}${done}/${cat.items.length}</span></button>`;
     });
     html += "</div>";
-    // مدخل حصن المسلم (شاشة مستقلة لتنظيم أفضل)
+    // حصن المسلم — كامل الأبواب مدمج وقابل للبحث (المرجع المعتمد)
     if (typeof HISN !== "undefined") {
       const total = HISN.reduce((s, c) => s + c.items.length, 0);
-      html += `<div class="hisn-entry" id="hisnEntry">
-        <div class="he-ic">📕</div>
-        <div class="he-txt"><h3>حصن المسلم كامل</h3><p>${HISN.length} بابًا · ${total} ذكرًا — تصفّح وابحث</p></div>
-        <span class="he-arrow">‹</span></div>`;
+      html += `<div class="sec-title">📕 حصن المسلم — ${HISN.length} بابًا · ${total} ذكرًا</div>
+        <input id="hisnSearch" class="hisn-search" type="search" placeholder="🔍 ابحث في أبواب حصن المسلم (المنزل، السفر، الطعام…)" />
+        <div class="hisn-list" id="hisnList"></div>`;
     }
     html += `<button class="about-link" id="aboutBtn">ℹ️ المصادر ومنهج التوثيق</button>`;
     view.innerHTML = html;
-    view.querySelectorAll(".cat-card").forEach(el => el.addEventListener("click", () => renderCategory(el.dataset.cat)));
-    const he = document.getElementById("hisnEntry");
-    if (he) he.addEventListener("click", renderHisnBrowser);
+    view.querySelectorAll(".acat-row").forEach(el => el.addEventListener("click", () => renderCategory(el.dataset.cat)));
+    if (typeof HISN !== "undefined") {
+      renderHisnList("");
+      const s = document.getElementById("hisnSearch");
+      s.addEventListener("input", () => renderHisnList(s.value));
+    }
     document.getElementById("aboutBtn").addEventListener("click", renderAbout);
-    window.scrollTo(0, 0);
-  }
-
-  function renderHisnBrowser() {
-    appTitle.textContent = "حصن المسلم";
-    backBtn.classList.remove("hidden");
-    goBack = renderAthkarHome;
-    view.innerHTML = `<div class="cat-head"><h2>حصن المسلم</h2><p>كامل الأبواب — من المصدر الرسمي للكتاب</p></div>
-      <input id="hisnSearch" class="hisn-search" type="search" placeholder="🔍 ابحث في أبواب حصن المسلم…" />
-      <div class="hisn-list" id="hisnList"></div>`;
-    renderHisnList("");
-    const s = document.getElementById("hisnSearch");
-    s.addEventListener("input", () => renderHisnList(s.value));
     window.scrollTo(0, 0);
   }
   function countDone(cat) {
@@ -141,7 +133,7 @@
     const ch = HISN.find(c => c.id === id); if (!ch) return renderAthkarHome();
     appTitle.textContent = ch.title;
     backBtn.classList.remove("hidden");
-    goBack = renderHisnBrowser;
+    goBack = renderAthkarHome;
     const cid = hcid(id);
     let html = `<div class="cat-head"><h2>${esc(ch.title)}</h2><p>من كتاب حصن المسلم</p></div>`;
     if (ch.audio) html += `<button class="audio-btn" id="audioBtn" data-src="${ch.audio}">▶ استماع للباب</button>`;
@@ -286,61 +278,8 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: "", audio: "", ayahRef: ""
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: ""
   };
-  // سور قصيرة مناسبة لصوت الفيديو
-  const VIDEO_SURAHS = [1, 112, 113, 114, 108, 110, 109, 103, 105, 106, 107, 97, 94, 93];
-  // مجلدات القرّاء على everyayah لتلاوة الآية المطابقة
-  const EA_FOLDERS = {
-    afs: "Alafasy_128kbps", sds: "Abdurrahmaan_As-Sudais_192kbps", shur: "Saood_ash-Shuraym_128kbps",
-    maher: "MaherAlMuaiqly128kbps", minsh: "Minshawy_Murattal_128kbps", bsfr: "Abdullah_Basfar_192kbps",
-    s_gmd: "Ghamadi_40kbps", yasser: "Yasser_Ad-Dussary_128kbps", jbrl: "Muhammad_Jibreel_128kbps"
-  };
-  const pad3 = n => String(n).padStart(3, "0");
-  function qnorm(s) { return String(s).replace(/[ً-ٰٟـۖ-ۭ]/g, "").replace(/[آأإٱ]/g, "ا").replace(/ى/g, "ي").replace(/[^ء-ي]/g, ""); }
-  // مراجع الآيات لبطاقات النصوص القرآنية (لمطابقة التلاوة)
-  const _refsRaw = [
-    ["رَبَّنَا ظَلَمْنَا أَنْفُسَنَا وَإِنْ لَمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ", "7:23"],
-    ["رَبَّنَا اغْفِرْ لَنَا ذُنُوبَنَا وَإِسْرَافَنَا فِي أَمْرِنَا وَثَبِّتْ أَقْدَامَنَا", "3:147"],
-    ["لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ", "21:87"],
-    ["حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ", "9:129"],
-    ["الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ", "1:2"],
-    ["رَبِّ أَوْزِعْنِي أَنْ أَشْكُرَ نِعْمَتَكَ الَّتِي أَنْعَمْتَ عَلَيَّ وَعَلَى وَالِدَيَّ", "27:19"],
-    ["رَبِّ إِنِّي مَسَّنِيَ الضُّرُّ وَأَنْتَ أَرْحَمُ الرَّاحِمِينَ", "21:83"],
-    ["رَبِّ إِنِّي لِمَا أَنْزَلْتَ إِلَيَّ مِنْ خَيْرٍ فَقِيرٌ", "28:24"],
-    ["وَمَنْ يَتَّقِ اللَّهَ يَجْعَلْ لَهُ مَخْرَجًا وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ", "65:2-3"],
-    ["رَبَّنَا لَا تُزِغْ قُلُوبَنَا بَعْدَ إِذْ هَدَيْتَنَا وَهَبْ لَنَا مِنْ لَدُنْكَ رَحْمَةً إِنَّكَ أَنْتَ الْوَهَّابُ", "3:8"],
-    ["اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ", "1:6"],
-    ["رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ وَاجْعَلْنَا لِلْمُتَّقِينَ إِمَامًا", "25:74"],
-    ["رَبِّ هَبْ لِي مِنْ لَدُنْكَ ذُرِّيَّةً طَيِّبَةً إِنَّكَ سَمِيعُ الدُّعَاءِ", "3:38"],
-    ["رَبِّ اجْعَلْنِي مُقِيمَ الصَّلَاةِ وَمِنْ ذُرِّيَّتِي رَبَّنَا وَتَقَبَّلْ دُعَاءِ", "14:40"],
-    ["رَبِّ هَبْ لِي مِنَ الصَّالِحِينَ", "37:100"],
-    ["رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ", "2:201"],
-    ["رَبَّنَا اصْرِفْ عَنَّا عَذَابَ جَهَنَّمَ إِنَّ عَذَابَهَا كَانَ غَرَامًا", "25:65"],
-    ["رَبِّ ابْنِ لِي عِنْدَكَ بَيْتًا فِي الْجَنَّةِ", "66:11"],
-    ["رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي", "20:25-26"],
-    ["سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ", "43:13-14"],
-    ["رَبَّنَا اغْفِرْ لَنَا وَلِإِخْوَانِنَا الَّذِينَ سَبَقُونَا بِالْإِيمَانِ وَلَا تَجْعَلْ فِي قُلُوبِنَا غِلًّا لِلَّذِينَ آمَنُوا", "59:10"],
-    ["رَبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا", "17:24"],
-    ["رَبَّنَا اغْفِرْ لِي وَلِوَالِدَيَّ وَلِلْمُؤْمِنِينَ يَوْمَ يَقُومُ الْحِسَابُ", "14:41"],
-    ["أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ", "13:28"],
-    ["فَاذْكُرُونِي أَذْكُرْكُمْ وَاشْكُرُوا لِي وَلَا تَكْفُرُونِ", "2:152"],
-    ["إِنَّ مَعَ الْعُسْرِ يُسْرًا", "94:6"],
-    ["وَقُلْ رَبِّ زِدْنِي عِلْمًا", "20:114"],
-    ["وَمَنْ يَتَّقِ اللَّهَ يَجْعَلْ لَهُ مَخْرَجًا", "65:2"],
-    ["حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ", "3:173"],
-    ["وَبَشِّرِ الصَّابِرِينَ", "2:155"],
-    ["إِنَّ اللَّهَ مَعَ الَّذِينَ اتَّقَوْا وَالَّذِينَ هُمْ مُحْسِنُونَ", "16:128"],
-    ["وَعَسَى أَنْ تَكْرَهُوا شَيْئًا وَهُوَ خَيْرٌ لَكُمْ", "2:216"]
-  ];
-  const AYAH_REFS = {}; _refsRaw.forEach(([t, r]) => { AYAH_REFS[qnorm(t)] = r; });
-  function refForText(t) { return AYAH_REFS[qnorm(t || "")] || ""; }
-  function ayahUrls(ref, folder) {
-    const parts = ref.split(":"), su = parseInt(parts[0], 10), ar = parts[1];
-    let a1, a2; if (ar.indexOf("-") >= 0) { const p = ar.split("-"); a1 = +p[0]; a2 = +p[1]; } else { a1 = a2 = +ar; }
-    const out = []; for (let a = a1; a <= a2; a++) out.push(`https://everyayah.com/data/${folder}/${pad3(su)}${pad3(a)}.mp3`);
-    return out;
-  }
   const FRAMES = [
     { k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "corners", n: "زوايا" },
     { k: "dashed", n: "متقطّع" }, { k: "ornate", n: "مزخرف" }, { k: "none", n: "بدون" }
@@ -373,34 +312,37 @@
           <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
           <div class="card-actions">
             <button class="act primary" id="shareCard">📤 مشاركة</button>
-            <button class="act" id="videoCard">🎬 فيديو</button>
             <button class="act" id="downloadCard">📥 تنزيل</button>
             <button class="act" id="randomCard">🎲 عشوائي</button>
             <button class="act" id="copyCard">📋 نسخ</button>
           </div>
         </div>
         <div class="card-controls">
-          <div class="ctl-group">
-            <div class="section-label">📐 المقاس</div>
-            <div class="chips-row" id="sizeRow">${sizes}</div>
-          </div>
-          <div class="ctl-group">
-            <div class="section-label">🎨 التصميم</div>
-            <div class="theme-row">${themes}</div>
-          </div>
-          <div class="ctl-group">
-            <div class="section-label">🖼️ الإطار</div>
-            <div class="chips-row" id="frameRow">${FRAMES.map(f => `<button class="chip ${cardState.frame === f.k ? "active" : ""}" data-frame="${f.k}">${f.n}</button>`).join("")}</div>
-          </div>
-          <div class="ctl-group">
-            <div class="section-label">✨ الزخرفة (بدون صورة)</div>
-            <div class="chips-row" id="patternRow">${PATTERNS.map(p => `<button class="chip ${cardState.pattern === p.k ? "active" : ""}" data-pattern="${p.k}">${p.n}</button>`).join("")}</div>
-          </div>
           <details class="ctl" open>
+            <summary>📚 اختر الذكر</summary>
+            <div class="ctl-body">
+              <div class="chips-row" id="libChips">${chips}</div>
+              <div class="lib-list" id="libList"></div>
+            </div>
+          </details>
+          <details class="ctl" open>
+            <summary>🎨 التصميم</summary>
+            <div class="ctl-body">
+              <div class="mini-label">المقاس (للمنصّات)</div>
+              <div class="chips-row" id="sizeRow">${sizes}</div>
+              <div class="mini-label">الألوان</div>
+              <div class="theme-row">${themes}</div>
+              <div class="mini-label">الإطار</div>
+              <div class="chips-row" id="frameRow">${FRAMES.map(f => `<button class="chip ${cardState.frame === f.k ? "active" : ""}" data-frame="${f.k}">${f.n}</button>`).join("")}</div>
+              <div class="mini-label">الزخرفة (بدون صورة)</div>
+              <div class="chips-row" id="patternRow">${PATTERNS.map(p => `<button class="chip ${cardState.pattern === p.k ? "active" : ""}" data-pattern="${p.k}">${p.n}</button>`).join("")}</div>
+            </div>
+          </details>
+          <details class="ctl">
             <summary>✏️ حجم النص ولونه</summary>
             <div class="ctl-body">
               ${sliderHTML("textScale", "حجم النص", 60, 170, 5, Math.round(cardState.textScale * 100))}
-              <div class="swatch-label">لون النص</div>
+              <div class="mini-label">لون النص</div>
               <div class="swatch-row" id="textColors">
                 <button class="swatch reset ${cardState.textColor ? "" : "active"}" data-col="" title="افتراضي">↺</button>
                 ${TEXT_COLORS.map(c => `<button class="swatch ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${c}"></button>`).join("")}
@@ -414,7 +356,7 @@
               <label class="act full upload-label">📷 رفع صورة من جهازك
                 <input type="file" id="photoInput" accept="image/*" hidden /></label>
               <div class="filter-panel hidden" id="filterPanel">
-                <p class="drag-hint">👆 اسحب الصورة داخل المعاينة لتحريكها · صغّر أو كبّر بالشريط</p>
+                <p class="drag-hint">👆 اسحب الصورة لتحريكها · صغّر أو كبّر بالشريط</p>
                 ${sliderHTML("zoom", "تكبير / تصغير الصورة", 30, 300, 5, Math.round(cardState.img.zoom * 100))}
                 <div class="chips-row">${fpresets}</div>
                 ${sliderHTML("brightness", "السطوع", 50, 150, 1, cardState.filter.brightness)}
@@ -426,30 +368,12 @@
             </div>
           </details>
           <details class="ctl">
-            <summary>🔊 صوت الفيديو (تلاوة)</summary>
-            <div class="ctl-body">
-              <select id="videoAudio" class="region-sel">
-                <option value="">بدون صوت</option>
-                <option value="match" ${cardState.audio === "match" ? "selected" : ""}>🔁 تلاوة النص المعروض (للآيات القرآنية)</option>
-                ${VIDEO_SURAHS.map(n => `<option value="${n}" ${cardState.audio == n ? "selected" : ""}>سورة ${(typeof SURAHS !== "undefined" ? SURAHS[n - 1] : n)}</option>`).join("")}
-              </select>
-              <p class="drag-hint">تُدمج التلاوة بصوت القارئ المختار في تبويب القرآن. «تلاوة النص المعروض» تطابق الآية المعروضة. مدة الفيديو بطول التلاوة.</p>
-            </div>
-          </details>
-          <details class="ctl">
             <summary>✍️ اكتب ذكرك الخاص</summary>
             <div class="ctl-body custom-box">
               <input id="customTitle" type="text" placeholder="العنوان (اختياري) — مثل: أذكار الصباح" value="${esc(cardState.title)}" />
               <textarea id="customText" rows="2" placeholder="اكتب ذكرًا أو دعاءً صحيحًا..."></textarea>
               <input id="customSource" type="text" placeholder="المصدر (اختياري)" />
               <button class="act primary full" id="applyCustom">توليد بطاقتي الخاصة</button>
-            </div>
-          </details>
-          <details class="ctl" open>
-            <summary>📚 اختر من المكتبة</summary>
-            <div class="ctl-body">
-              <div class="chips-row" id="libChips">${chips}</div>
-              <div class="lib-list" id="libList"></div>
             </div>
           </details>
         </div>
@@ -542,9 +466,6 @@
       view.querySelectorAll("#patternRow .chip").forEach(x => x.classList.toggle("active", x === b));
       drawCard();
     }));
-    // صوت الفيديو
-    const va = view.querySelector("#videoAudio");
-    if (va) va.addEventListener("change", () => { cardState.audio = va.value; });
     view.querySelectorAll(".gchip").forEach(b => b.addEventListener("click", () => {
       const gi = parseInt(b.dataset.g, 10);
       view.querySelectorAll(".gchip").forEach(x => x.classList.toggle("active", x === b));
@@ -557,7 +478,6 @@
       if (!t) { view.querySelector("#customText").focus(); return; }
       cardState.text = t; cardState.source = view.querySelector("#customSource").value.trim();
       cardState.title = view.querySelector("#customTitle").value.trim();
-      cardState.ayahRef = refForText(t);
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     });
     view.querySelector("#randomCard").addEventListener("click", () => {
@@ -568,10 +488,6 @@
     view.querySelector("#downloadCard").addEventListener("click", () => exportCard("download"));
     view.querySelector("#shareCard").addEventListener("click", () => exportCard("share"));
     view.querySelector("#copyCard").addEventListener("click", copyCardText);
-    view.querySelector("#videoCard").addEventListener("click", (e) => {
-      const btn = e.currentTarget; btn.disabled = true; const old = btn.textContent; btn.textContent = "⏳ جارٍ…";
-      generateVideo("share").finally(() => { btn.disabled = false; btn.textContent = old; });
-    });
   }
   function bindCanvasDrag() {
     const cv = view.querySelector("#cardCanvas"); if (!cv) return;
@@ -600,7 +516,6 @@
     view.querySelectorAll(".lib-item").forEach(b => b.addEventListener("click", () => {
       const g = parseInt(b.dataset.g, 10), i = parseInt(b.dataset.i, 10), it = CARD_GROUPS[g].items[i];
       // المكتبة العامة بلا عنوان — العنوان يليق فقط بالأذكار المرتبطة بمناسبة محددة
-      cardState.text = it.t; cardState.source = it.s; cardState.title = ""; cardState.ayahRef = refForText(it.t);
       const ti = view.querySelector("#customTitle"); if (ti) ti.value = "";
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     }));
@@ -760,227 +675,6 @@
     ctx.globalAlpha = 1;
   }
 
-  // توليد فيديو قصير حيويّ متحرك (WebM): جسيمات ذهبية + توهّج متحرك + ظهور النص سطرًا سطرًا + نبض
-  async function generateVideo(mode) {
-    const test = document.createElement("canvas");
-    if (typeof MediaRecorder === "undefined" || !test.captureStream) { toast("متصفحك لا يدعم توليد الفيديو — جرّب Chrome"); return; }
-    const mimes = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
-    const mime = mimes.find(m => { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } });
-    if (!mime) { toast("تعذّر توليد الفيديو في هذا المتصفح"); return; }
-
-    const sz = SIZES[cardState.sizeIdx];
-    const sc = Math.min(1, 1080 / Math.max(sz.w, sz.h));
-    const W = Math.round(sz.w * sc), H = Math.round(sz.h * sc), u = Math.min(W, H);
-    const c = document.createElement("canvas"); c.width = W; c.height = H;
-    const ctx = c.getContext("2d");
-    try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
-
-    const th = CARD_THEMES[cardState.theme], hasImg = !!cardState.bgImage, accent = th.accent;
-    const fg = cardState.textColor || (hasImg ? "#ffffff" : th.fg), sub = hasImg ? "#ece3cd" : th.sub;
-    const clamp = x => Math.max(0, Math.min(1, x)), ease = x => 1 - Math.pow(1 - x, 3);
-
-    // تخطيط النص (يُحسب مرة واحدة)
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
-    const maxW = W * 0.80, areaTop = H * 0.20, areaBot = H * 0.82, maxH = areaBot - areaTop;
-    const len = cardState.text.length;
-    let size = (len < 18 ? 0.105 : len < 45 ? 0.078 : len < 90 ? 0.060 : len < 150 ? 0.047 : 0.038) * u;
-    let lines;
-    while (size >= u * 0.022) {
-      ctx.font = `${size}px 'Amiri Quran', serif`;
-      lines = wrapLines(ctx, cardState.text, maxW);
-      const lh0 = size * 1.75, totalH = lines.length * lh0;
-      const widest = Math.max.apply(null, lines.map(l => ctx.measureText(l).width));
-      if (totalH <= maxH && widest <= maxW) break;
-      size -= u * 0.006;
-    }
-    size *= cardState.textScale || 1;
-    const lh = size * 1.75, tcY = (areaTop + areaBot) / 2, startY = tcY - ((lines.length - 1) * lh) / 2;
-
-    // جسيمات ذهبية صاعدة
-    const PN = Math.max(40, Math.round((W * H) / 24000)), particles = [];
-    for (let i = 0; i < PN; i++) particles.push({
-      x: Math.random() * W, y: Math.random() * H,
-      r: u * (0.0015 + Math.random() * 0.004), sp: u * (0.0005 + Math.random() * 0.0018),
-      ph: Math.random() * 6.283, tw: 0.4 + Math.random() * 0.6
-    });
-
-    // إعداد الصوت — تلاوة مطابقة للآيات أو سورة قصيرة
-    let DUR = 9000, audioEls = [], actx = null, audioStream = null;
-    let urls = [];
-    const ridx = (typeof RECITERS !== "undefined") ? (parseInt(localStorage.getItem("quran_reciter") || "0", 10)) : 0;
-    const reciter = (typeof RECITERS !== "undefined") ? (RECITERS[ridx] || RECITERS[0]) : null;
-    if (cardState.audio === "match") {
-      if (cardState.ayahRef) { urls = ayahUrls(cardState.ayahRef, EA_FOLDERS[reciter && reciter.id] || "Alafasy_128kbps"); }
-      else { toast("المطابقة الصوتية متاحة للنصوص القرآنية (الآيات) فقط"); }
-    } else if (cardState.audio && /^\d+$/.test(cardState.audio) && reciter) {
-      urls = [reciter.server + pad3(parseInt(cardState.audio, 10)) + ".mp3"];
-    }
-    if (urls.length) {
-      try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        actx = new AC(); if (actx.state === "suspended") { try { await actx.resume(); } catch (e) {} }
-        const dest = actx.createMediaStreamDestination();
-        audioEls = urls.map(u => { const a = new Audio(); a.crossOrigin = "anonymous"; a.src = u; a.preload = "auto"; actx.createMediaElementSource(a).connect(dest); return a; });
-        await Promise.all(audioEls.map(a => new Promise((res, rej) => { a.onloadedmetadata = res; a.onerror = rej; setTimeout(rej, 15000); })));
-        const total = audioEls.reduce((s, a) => s + (a.duration || 0), 0);
-        DUR = Math.min(total * 1000 + 600, 40000);
-        audioStream = dest.stream;
-      } catch (e) { audioEls = []; audioStream = null; actx = null; DUR = 9000; toast("تعذّر تحميل الصوت — سيُولّد الفيديو بلا صوت"); }
-    }
-
-    function scene(ts) {
-      ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
-      // خلفية
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-      if (hasImg) {
-        const kz = 1 + 0.11 * ease(clamp(ts / (DUR / 1000)));
-        const panx = Math.sin(ts * 0.22) * u * 0.012;
-        ctx.save(); ctx.filter = filterString(cardState.filter);
-        drawBg(ctx, cardState.bgImage, W, H, { zoom: (cardState.img.zoom || 1) * kz, ox: (cardState.img.ox || 0) + panx, oy: cardState.img.oy || 0 });
-        ctx.restore();
-        const d = cardState.filter.dark, ov = ctx.createLinearGradient(0, 0, 0, H);
-        ov.addColorStop(0, `rgba(8,11,14,${Math.min(0.95, d * 0.7)})`);
-        ov.addColorStop(0.5, `rgba(8,11,14,${Math.min(0.96, d)})`);
-        ov.addColorStop(1, `rgba(8,11,14,${Math.min(1, d * 1.05)})`);
-        ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
-      } else {
-        // توهّج متحرك
-        ctx.globalCompositeOperation = "lighter";
-        for (let k = 0; k < 2; k++) {
-          const gx = W * (0.5 + 0.33 * Math.sin(ts * 0.25 + k * 2.1));
-          const gy = H * (0.42 + 0.30 * Math.cos(ts * 0.20 + k * 1.7));
-          const rg = ctx.createRadialGradient(gx, gy, 0, gx, gy, u * 0.62);
-          rg.addColorStop(0, hexA(accent, k ? 0.10 : 0.15)); rg.addColorStop(1, hexA(accent, 0));
-          ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
-        }
-        ctx.globalCompositeOperation = "source-over";
-      }
-
-      // جسيمات
-      ctx.globalCompositeOperation = "lighter";
-      for (const p of particles) {
-        p.y -= p.sp; if (p.y < -p.r * 2) { p.y = H + p.r * 2; p.x = Math.random() * W; }
-        const tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(ts * 2 + p.ph));
-        ctx.globalAlpha = tw * p.tw * 0.7;
-        ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = p.r * 3.5;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
-      }
-      ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-
-      // الإطار
-      drawFrame(ctx, W, H, u, accent, cardState.frame);
-
-      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
-      const fm = u * 0.045;
-      // العنوان أو الزخرفة
-      const titleA = ease(clamp((ts - 0.2) / 0.9));
-      ctx.globalAlpha = titleA;
-      if (cardState.title) {
-        let tts = u * 0.042; ctx.font = `700 ${tts}px 'Tajawal', sans-serif`;
-        while (ctx.measureText(cardState.title).width > W * 0.78 && tts > u * 0.024) { tts -= u * 0.003; ctx.font = `700 ${tts}px 'Tajawal', sans-serif`; }
-        ctx.fillStyle = accent; ctx.fillText(cardState.title, W / 2, H * 0.125);
-        const lw = u * 0.07 * ease(clamp((ts - 0.5) / 0.8));
-        ctx.strokeStyle = hexA(accent, 0.6); ctx.lineWidth = Math.max(1, u * 0.002);
-        ctx.beginPath(); ctx.moveTo(W / 2 - lw, H * 0.16); ctx.lineTo(W / 2 + lw, H * 0.16); ctx.stroke();
-      } else {
-        ctx.fillStyle = accent; ctx.font = `${Math.round(u * 0.042)}px 'Amiri Quran', serif`;
-        ctx.save(); ctx.translate(W / 2, H * 0.135); ctx.rotate(Math.sin(ts * 0.6) * 0.15);
-        ctx.fillText("۞", 0, 0); ctx.restore();
-      }
-      ctx.globalAlpha = 1;
-
-      // النص — ظهور سطرًا سطرًا + نبض لطيف + توهّج
-      const bs = 1 + 0.012 * Math.sin(ts * 1.6);
-      ctx.save();
-      ctx.translate(W / 2, tcY); ctx.scale(bs, bs); ctx.translate(-W / 2, -tcY);
-      ctx.font = `${size}px 'Amiri Quran', serif`; ctx.fillStyle = fg;
-      lines.forEach((l, i) => {
-        const st = 0.5 + i * 0.42, a = ease(clamp((ts - st) / 0.7)); if (a <= 0) return;
-        const dy = (1 - a) * u * 0.05;
-        ctx.globalAlpha = a;
-        if (hasImg) { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = u * 0.02; ctx.shadowOffsetY = u * 0.004; }
-        else { ctx.shadowColor = hexA(accent, 0.45 * a); ctx.shadowBlur = u * 0.006 * (0.6 + 0.4 * Math.sin(ts * 1.6)); }
-        ctx.fillText(l, W / 2, startY + i * lh + dy);
-      });
-      ctx.restore();
-      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; ctx.globalAlpha = 1;
-
-      // ومضة ضوء تمرّ على النص مرة واحدة (~ث2.6-4.2)
-      const swp = (ts - 2.6) / 1.6;
-      if (swp > 0 && swp < 1) {
-        const sx = -W * 0.3 + swp * W * 1.6;
-        const lg = ctx.createLinearGradient(sx - u * 0.12, 0, sx + u * 0.12, 0);
-        lg.addColorStop(0, "rgba(255,255,255,0)"); lg.addColorStop(0.5, "rgba(255,255,255,0.10)"); lg.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.save(); ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = lg; ctx.fillRect(0, areaTop, W, maxH); ctx.restore();
-      }
-
-      // المصدر + العلامة + QR
-      const uiA = ease(clamp((ts - 1.8) / 1.3));
-      ctx.globalAlpha = uiA;
-      if (cardState.source) {
-        ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.030)}px 'Amiri', 'Tajawal', sans-serif`;
-        ctx.fillText("﴿ " + cardState.source + " ﴾", W / 2, areaBot + u * 0.04);
-      }
-      ctx.fillStyle = hexA(accent, 0.95); ctx.font = `700 ${Math.round(u * 0.030)}px 'Tajawal', sans-serif`;
-      ctx.fillText("📿 أذكار", W / 2, H - u * 0.066);
-      if (qrImg && qrImg.complete && qrImg.naturalWidth) {
-        const q = u * 0.115, pad = u * 0.011, qx = fm * 1.7, qy = H - fm * 1.7 - q;
-        ctx.fillStyle = "rgba(255,255,255,0.96)"; roundRect(ctx, qx - pad, qy - pad, q + pad * 2, q + pad * 2, u * 0.012); ctx.fill();
-        ctx.drawImage(qrImg, qx, qy, q, q);
-        ctx.fillStyle = sub; ctx.font = `${Math.round(u * 0.019)}px 'Tajawal', sans-serif`;
-        ctx.fillText("امسح للوصول", qx + q / 2, qy + q + u * 0.028);
-      }
-      ctx.globalAlpha = 1;
-
-      // إطار داكن خفيف للعمق
-      const vg = ctx.createRadialGradient(W / 2, H / 2, u * 0.32, W / 2, H / 2, u * 0.78);
-      vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.20)");
-      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-    }
-
-    const vstream = c.captureStream(30);
-    const tracks = vstream.getVideoTracks().concat(audioStream ? audioStream.getAudioTracks() : []);
-    const stream = new MediaStream(tracks);
-    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 7000000, audioBitsPerSecond: 128000 });
-    const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-    const stopped = new Promise(res => { rec.onstop = res; });
-    toast(audioEls.length ? "🎬 جارٍ توليد الفيديو مع التلاوة…" : "🎬 جارٍ توليد الفيديو…");
-    rec.start();
-    // تشغيل المقاطع الصوتية بالتسلسل
-    if (audioEls.length) {
-      let ai = 0;
-      const playNext = () => { if (ai < audioEls.length) { const a = audioEls[ai]; a.onended = () => { ai++; playNext(); }; try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} } };
-      playNext();
-    }
-    const start = performance.now();
-    await new Promise(res => {
-      function frame(now) {
-        const el = now - start;
-        scene(el / 1000);
-        if (el < DUR) requestAnimationFrame(frame); else res();
-      }
-      requestAnimationFrame(frame);
-    });
-    rec.stop(); await stopped;
-    audioEls.forEach(a => { try { a.pause(); } catch (e) {} });
-    if (actx) { try { actx.close(); } catch (e) {} }
-
-    const blob = new Blob(chunks, { type: "video/webm" });
-    const file = new File([blob], "thikr.webm", { type: "video/webm" });
-    if (mode === "share" && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], text: cardTextForShare() }); return; }
-      catch (e) { if (e && e.name === "AbortError") return; }
-    }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "ذكر.webm";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 6000);
-    toast("تم توليد الفيديو ✓");
-  }
 
   function paintPattern(ctx, W, H, th, key) {
     key = key || th.pattern;
@@ -1231,7 +925,6 @@
   }
   function makeCard(text, source, title) {
     cardState.text = text; cardState.source = source || ""; cardState.title = title || "";
-    cardState.ayahRef = refForText(text);
     cardState.bgImage = null; cardState.textColor = ""; cardState.textScale = 1;
     switchTab("cards");
     toast("جهّزنا الذكر — صمّم بطاقتك وشاركها 🎴");
