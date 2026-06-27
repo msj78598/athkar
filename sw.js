@@ -1,5 +1,5 @@
 /* Service Worker — عمل بدون إنترنت + تحديث تلقائي للنسخ الجديدة */
-const CACHE = "athkar-v38";
+const CACHE = "athkar-v39";
 const ASSETS = [
   "./",
   "./index.html",

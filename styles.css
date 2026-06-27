@@ -575,3 +575,6 @@ img, canvas, video { max-width: 100%; }
 [data-theme="dark"] .size-thumb.active .st-box { background: linear-gradient(135deg, var(--accent-soft), transparent); }
 .st-label { font-family: "Tajawal"; font-size: .72rem; font-weight: 700; color: var(--text-muted); }
 .size-thumb.active .st-label { color: var(--accent); }
+
+/* فصل مقدّمة التلاوة (البسملة) في سطر مستقلّ ضمن نصّ الذكر */
+.dhikr-text { white-space: pre-line; }
