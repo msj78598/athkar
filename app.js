@@ -91,13 +91,31 @@
 
   /* ============== تبويب الأذكار ============== */
   function tickerHTML() {
-    const row = (arr, cls) => {
-      const one = arr.map(t => `<span class="tk-item">${esc(t)}</span>`).join('<span class="tk-dot">۞</span>');
-      // نكرّر المحتوى 4 مرات لضمان امتلاء الشاشة وحركة سلسة بلا فراغات
-      const seq = (one + '<span class="tk-dot">۞</span>').repeat(4);
-      return `<div class="ticker ${cls}"><div class="tk-track">${seq}</div></div>`;
+    return `<div class="ticker-wrap">
+      <div class="ticker a"><span class="tk-now" id="tkA"></span></div>
+      <div class="ticker b"><span class="tk-now" id="tkB"></span></div>
+    </div>`;
+  }
+  let tickerTimers = [];
+  function startTickers() {
+    tickerTimers.forEach(clearInterval); tickerTimers = [];
+    const drive = (id, arr, period) => {
+      const el = document.getElementById(id); if (!el || !arr || !arr.length) return;
+      let i = Math.floor(Math.random() * arr.length);
+      el.textContent = arr[i]; requestAnimationFrame(() => el.classList.add("show"));
+      const step = () => {
+        if (!document.body.contains(el)) return;
+        el.classList.remove("show"); // تلاشٍ للخارج
+        setTimeout(() => {
+          if (!document.body.contains(el)) return;
+          i = (i + 1) % arr.length; el.textContent = arr[i];
+          requestAnimationFrame(() => el.classList.add("show")); // ومضة دخول
+        }, 600);
+      };
+      tickerTimers.push(setInterval(step, period));
     };
-    return `<div class="ticker-wrap">${row(TICKER_TASBIH, "a")}${row(TICKER_ISTIGHFAR, "b")}</div>`;
+    drive("tkA", TICKER_TASBIH, 4000);
+    setTimeout(() => drive("tkB", TICKER_ISTIGHFAR, 4600), 2000);
   }
 
   function renderAthkarHome() {
@@ -141,6 +159,7 @@
     const spread = document.getElementById("spreadBtn");
     if (spread) spread.addEventListener("click", spreadSite);
     loadVisits();
+    startTickers();
     window.scrollTo(0, 0);
   }
   function spreadSite() {
