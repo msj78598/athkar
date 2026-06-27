@@ -641,9 +641,17 @@
       drawCard(); document.querySelector(".card-preview").scrollIntoView({ behavior: "smooth", block: "center" });
     });
     view.querySelector("#randomCard").addEventListener("click", () => {
+      const rnd = a => a[Math.floor(Math.random() * a.length)];
       cardState.theme = Math.floor(Math.random() * CARD_THEMES.length);
-      view.querySelectorAll(".theme-dot").forEach((x, i) => x.classList.toggle("active", i === cardState.theme));
-      drawCard(); vibrate(8);
+      const th = CARD_THEMES[cardState.theme];
+      cardState.frame = rnd(FRAMES).k;
+      if (Math.random() < 0.45) { cardState.bg = rnd(BACKGROUNDS.filter(b => b.k)).k; cardState.pattern = ""; }
+      else { cardState.bg = ""; cardState.pattern = rnd(PATTERNS.filter(p => p.k && p.k !== "none")).k; }
+      cardState.textColor = rnd(isLight(th.bg[0]) ? ["", "", "#0c1716", "gold"] : ["", "", "#ffffff", "#f7e9c2", "gold", "#ffd97d"]);
+      cardState.textScale = rnd([0.9, 1, 1, 1.1, 1.2]);
+      const vr = document.getElementById("vTextScale"); if (vr) vr.value = Math.round(cardState.textScale * 100);
+      refreshCardUI();
+      drawCard(); vibrate(12);
     });
     view.querySelector("#downloadCard").addEventListener("click", () => exportCard("download"));
     view.querySelector("#shareCard").addEventListener("click", () => exportCard("share"));
@@ -1112,6 +1120,19 @@
   function hexA(hex, a) {
     const h = hex.replace("#", ""); const n = parseInt(h.length === 3 ? h.replace(/(.)/g, "$1$1") : h, 16);
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  function isLight(hex) {
+    const h = hex.replace("#", ""); const n = parseInt(h.length === 3 ? h.replace(/(.)/g, "$1$1") : h, 16);
+    return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150;
+  }
+  // مزامنة كل مؤشّرات لوحة البطاقة مع الحالة الحالية
+  function refreshCardUI() {
+    view.querySelectorAll(".theme-dot").forEach((x, i) => x.classList.toggle("active", i === cardState.theme));
+    view.querySelectorAll("#frameRow .chip").forEach(x => x.classList.toggle("active", x.dataset.frame === cardState.frame));
+    view.querySelectorAll("#patternRow .chip").forEach(x => x.classList.toggle("active", (x.dataset.pattern || "") === (cardState.pattern || "")));
+    view.querySelectorAll("#bgRow .chip").forEach(x => x.classList.toggle("active", (x.dataset.bg || "") === (cardState.bg || "")));
+    view.querySelectorAll("#textColors .swatch").forEach(x => x.classList.toggle("active", (x.dataset.col || "") === (cardState.textColor || "")));
+    view.querySelectorAll("#colorRail .vsw").forEach(x => x.classList.toggle("active", (x.dataset.col || "") === (cardState.textColor || "")));
   }
 
   function cardTextForShare() {
