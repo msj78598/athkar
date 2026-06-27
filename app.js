@@ -354,7 +354,8 @@
   let cardState = {
     text: "", source: "", theme: 0, sizeIdx: 0, bgImage: null, filterKey: "original",
     filter: { brightness: 100, contrast: 102, saturate: 105, sepia: 0, blur: 0, dark: 0.45 },
-    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0 }, frame: "double", pattern: "", title: "", bg: "", fromName: "", toName: ""
+    textScale: 1, textColor: "", img: { zoom: 1, ox: 0, oy: 0, fit: "cover" }, frame: "double", pattern: "", title: "", bg: "", fromName: "", toName: "",
+    layers: [], sel: -1, textPos: "center"
   };
   const FRAMES = [
     { k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "corners", n: "زوايا" },
@@ -479,19 +480,32 @@
             </div>
           </details>
           <details class="ctl" id="photoDetails">
-            <summary>📷 خلفية صورة وفلاتر</summary>
+            <summary>📷 الصور والخلفية</summary>
             <div class="ctl-body">
-              <label class="act full upload-label">📷 رفع صورة من جهازك
+              <label class="act full upload-label">📷 صورة الخلفية من جهازك
                 <input type="file" id="photoInput" accept="image/*" hidden /></label>
               <div class="filter-panel hidden" id="filterPanel">
-                <p class="drag-hint">👆 اسحب الصورة لتحريكها · صغّر أو كبّر بالشريط</p>
-                ${sliderHTML("zoom", "تكبير / تصغير الصورة", 30, 300, 5, Math.round(cardState.img.zoom * 100))}
+                <div class="mini-label">طريقة عرض الخلفية</div>
+                <div class="chips-row" id="fitRow">
+                  <button class="chip ${cardState.img.fit === "cover" ? "active" : ""}" data-fit="cover">تعبئة الإطار</button>
+                  <button class="chip ${cardState.img.fit === "contain" ? "active" : ""}" data-fit="contain">احتواء كامل الصورة</button>
+                </div>
+                <p class="drag-hint">👆 اسحب الصورة لتحريكها · «احتواء» يُظهر الصورة كاملةً بخلفية ضبابية أنيقة (مثالي لخلفية الجوال)</p>
+                ${sliderHTML("zoom", "تكبير / تصغير", 50, 300, 5, Math.round(cardState.img.zoom * 100))}
                 <div class="chips-row">${fpresets}</div>
                 ${sliderHTML("brightness", "السطوع", 50, 150, 1, cardState.filter.brightness)}
                 ${sliderHTML("contrast", "التباين", 50, 160, 1, cardState.filter.contrast)}
                 ${sliderHTML("saturate", "التشبّع", 0, 200, 1, cardState.filter.saturate)}
                 ${sliderHTML("dark", "تعتيم لوضوح النص", 0, 95, 5, Math.round(cardState.filter.dark * 100))}
-                <button class="act full" id="removePhoto">✖ إزالة الصورة</button>
+                <button class="act full" id="removePhoto">✖ إزالة الخلفية</button>
+              </div>
+              <div class="mini-label">صور إضافية فوق التصميم</div>
+              <label class="act full upload-label">➕ أضف صورة فوق (صور أبنائك مثلًا)
+                <input type="file" id="layerInput" accept="image/*" hidden /></label>
+              <div id="layersBox"></div>
+              <div class="mini-label">موضع النصّ</div>
+              <div class="chips-row" id="textPosRow">
+                ${[["top", "أعلى"], ["center", "وسط"], ["bottom", "أسفل"], ["hide", "إخفاء"]].map(p => `<button class="chip ${cardState.textPos === p[0] ? "active" : ""}" data-tp="${p[0]}">${p[1]}</button>`).join("")}
               </div>
             </div>
           </details>
@@ -546,6 +560,22 @@
       view.querySelector("#photoInput").value = "";
       drawCard();
     });
+    // طريقة عرض الخلفية (تعبئة/احتواء)
+    view.querySelectorAll("#fitRow .chip").forEach(b => b.addEventListener("click", () => {
+      cardState.img.fit = b.dataset.fit;
+      cardState.img.ox = 0; cardState.img.oy = 0;
+      view.querySelectorAll("#fitRow .chip").forEach(x => x.classList.toggle("active", x === b));
+      drawCard();
+    }));
+    // موضع النصّ
+    view.querySelectorAll("#textPosRow .chip").forEach(b => b.addEventListener("click", () => {
+      cardState.textPos = b.dataset.tp;
+      view.querySelectorAll("#textPosRow .chip").forEach(x => x.classList.toggle("active", x === b));
+      drawCard();
+    }));
+    // إضافة صورة طبقة
+    const li = view.querySelector("#layerInput"); if (li) li.addEventListener("change", onLayerPhoto);
+    renderLayersBox();
     // فلاتر جاهزة
     view.querySelectorAll("[data-fp]").forEach(b => b.addEventListener("click", () => {
       const p = FILTER_PRESETS.find(x => x.key === b.dataset.fp); if (!p) return;
@@ -678,23 +708,38 @@
   }
   function bindCanvasDrag() {
     const cv = view.querySelector("#cardCanvas"); if (!cv) return;
-    let dragging = false, lx = 0, ly = 0;
-    const ratio = () => cv.width / (cv.clientWidth || cv.width);
+    let dragging = false, lx = 0, ly = 0, mode = null;
+    const toCanvas = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * cv.width, y: (e.clientY - r.top) / r.height * cv.height }; };
+    const hitLayer = (p) => {
+      const W = cv.width, H = cv.height;
+      for (let i = cardState.layers.length - 1; i >= 0; i--) {
+        const L = cardState.layers[i]; if (!L.img) continue;
+        const w = W * L.scale, h = w * (L.img.height / L.img.width), cx = W * L.cx, cy = H * L.cy;
+        if (p.x >= cx - w / 2 && p.x <= cx + w / 2 && p.y >= cy - h / 2 && p.y <= cy + h / 2) return i;
+      }
+      return -1;
+    };
     cv.addEventListener("pointerdown", (e) => {
-      if (!cardState.bgImage) return;
+      const hit = hitLayer(toCanvas(e));
+      if (hit >= 0) { if (cardState.sel !== hit) { cardState.sel = hit; renderLayersBox(); } mode = "layer"; }
+      else if (cardState.bgImage) mode = "bg";
+      else return;
       dragging = true; lx = e.clientX; ly = e.clientY;
       try { cv.setPointerCapture(e.pointerId); } catch (err) {}
       cv.classList.add("grabbing");
     });
     cv.addEventListener("pointermove", (e) => {
       if (!dragging) return;
-      const r = ratio();
-      cardState.img.ox += (e.clientX - lx) * r;
-      cardState.img.oy += (e.clientY - ly) * r;
+      const r = cv.getBoundingClientRect();
+      const dx = (e.clientX - lx) / r.width * cv.width, dy = (e.clientY - ly) / r.height * cv.height;
+      if (mode === "layer" && cardState.layers[cardState.sel]) {
+        cardState.layers[cardState.sel].cx += dx / cv.width;
+        cardState.layers[cardState.sel].cy += dy / cv.height;
+      } else if (mode === "bg") { cardState.img.ox += dx; cardState.img.oy += dy; }
       lx = e.clientX; ly = e.clientY;
       drawCard();
     });
-    const end = () => { dragging = false; cv.classList.remove("grabbing"); };
+    const end = () => { dragging = false; mode = null; cv.classList.remove("grabbing"); };
     cv.addEventListener("pointerup", end);
     cv.addEventListener("pointercancel", end);
     cv.addEventListener("pointerleave", end);
@@ -735,6 +780,53 @@
     return lines;
   }
 
+  function onLayerPhoto(e) {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        cardState.layers.push({ img: img, cx: 0.5, cy: 0.42, scale: 0.45, rot: 0 });
+        cardState.sel = cardState.layers.length - 1;
+        renderLayersBox(); drawCard();
+        const pv = document.getElementById("cardPreview"); if (pv) pv.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
+      img.onerror = () => toast("تعذّر قراءة الصورة");
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+  function renderLayersBox() {
+    const box = document.getElementById("layersBox"); if (!box) return;
+    const L = cardState.layers || [];
+    if (!L.length) { box.innerHTML = ""; return; }
+    let h = '<div class="layers-list">';
+    L.forEach((ly, i) => { h += `<button class="layer-chip ${cardState.sel === i ? "active" : ""}" data-ly="${i}">🖼️ صورة ${i + 1}</button>`; });
+    h += "</div>";
+    if (cardState.sel >= 0 && cardState.sel < L.length) {
+      const ly = L[cardState.sel];
+      h += `<div class="layer-controls">
+        <div class="slider-box"><label>حجم الصورة <span>${Math.round(ly.scale * 100)}</span></label>
+          <input type="range" class="lrange" data-lk="scale" min="12" max="100" step="1" value="${Math.round(ly.scale * 100)}" /></div>
+        <div class="slider-box"><label>تدوير <span>${Math.round((ly.rot || 0) * 180 / Math.PI)}°</span></label>
+          <input type="range" class="lrange" data-lk="rot" min="-180" max="180" step="1" value="${Math.round((ly.rot || 0) * 180 / Math.PI)}" /></div>
+        <p class="drag-hint">👆 اسحب الصورة على البطاقة لتحريكها</p>
+        <button class="act full" id="delLayer">🗑 حذف الصورة المحدّدة</button>
+      </div>`;
+    }
+    box.innerHTML = h;
+    box.querySelectorAll(".layer-chip").forEach(b => b.addEventListener("click", () => { cardState.sel = parseInt(b.dataset.ly, 10); renderLayersBox(); drawCard(); }));
+    box.querySelectorAll(".lrange").forEach(inp => inp.addEventListener("input", () => {
+      const ly = cardState.layers[cardState.sel]; if (!ly) return;
+      const v = parseFloat(inp.value);
+      if (inp.dataset.lk === "scale") ly.scale = v / 100; else ly.rot = v * Math.PI / 180;
+      inp.parentElement.querySelector("span").textContent = inp.dataset.lk === "rot" ? Math.round(v) + "°" : Math.round(v);
+      drawCard();
+    }));
+    const del = document.getElementById("delLayer");
+    if (del) del.addEventListener("click", () => { cardState.layers.splice(cardState.sel, 1); cardState.sel = cardState.layers.length ? 0 : -1; renderLayersBox(); drawCard(); });
+  }
   function onPhoto(e) {
     const file = e.target.files && e.target.files[0]; if (!file) return;
     const reader = new FileReader();
@@ -742,7 +834,7 @@
       const img = new Image();
       img.onload = () => {
         cardState.bgImage = img;
-        cardState.img = { zoom: 1, ox: 0, oy: 0 };
+        cardState.img = { zoom: 1, ox: 0, oy: 0, fit: cardState.img.fit || "cover" };
         const z = view.querySelector('.frange[data-key="zoom"]'); if (z) { z.value = 100; const zv = document.getElementById("v_zoom"); if (zv) zv.textContent = "100"; }
         const fp = view.querySelector("#filterPanel"); if (fp) fp.classList.remove("hidden");
         const pd = document.getElementById("photoDetails"); if (pd) pd.open = true; // افتح لوحة التحكم تلقائيًا
@@ -755,12 +847,45 @@
     reader.readAsDataURL(file);
   }
   function drawBg(ctx, img, W, H, t) {
-    // zoom = 1 يملأ البطاقة (cover). أقل من 1 يُصغّر الصورة، وأكثر يكبّرها. الحركة حرّة بالسحب.
-    const cover = Math.max(W / img.width, H / img.height);
-    const s = cover * (t.zoom || 1);
-    const dw = img.width * s, dh = img.height * s;
-    const dx = (W - dw) / 2 + (t.ox || 0), dy = (H - dh) / 2 + (t.oy || 0);
-    ctx.drawImage(img, dx, dy, dw, dh);
+    const zoom = t.zoom || 1;
+    if ((t.fit || "cover") === "contain") {
+      // احتواء: تظهر الصورة كاملةً (بلا قصّ)، ونملأ الفراغ بنسخة مكبّرة مضبّبة من الصورة نفسها — تبدو كخلفية جوال أنيقة
+      const cov = Math.max(W / img.width, H / img.height) * 1.15;
+      const bw = img.width * cov, bh = img.height * cov;
+      ctx.save(); ctx.filter = "blur(" + Math.round(Math.min(W, H) * 0.03) + "px) brightness(0.7)";
+      ctx.drawImage(img, (W - bw) / 2, (H - bh) / 2, bw, bh);
+      ctx.restore();
+      const fit = Math.min(W / img.width, H / img.height) * zoom;
+      const dw = img.width * fit, dh = img.height * fit;
+      ctx.drawImage(img, (W - dw) / 2 + (t.ox || 0), (H - dh) / 2 + (t.oy || 0), dw, dh);
+    } else {
+      // تعبئة (cover): تملأ البطاقة وقد تُقَصّ الأطراف. zoom للتكبير، والسحب لتحريك موضع القصّ.
+      const s = Math.max(W / img.width, H / img.height) * zoom;
+      const dw = img.width * s, dh = img.height * s;
+      ctx.drawImage(img, (W - dw) / 2 + (t.ox || 0), (H - dh) / 2 + (t.oy || 0), dw, dh);
+    }
+  }
+  // رسم طبقات الصور الأمامية (صور إضافية فوق الخلفية)
+  function drawLayers(ctx, W, H) {
+    (cardState.layers || []).forEach((L, i) => {
+      if (!L.img || !L.img.complete) return;
+      const w = W * (L.scale || 0.45), h = w * (L.img.height / L.img.width);
+      const cx = W * (L.cx != null ? L.cx : 0.5), cy = H * (L.cy != null ? L.cy : 0.5);
+      ctx.save();
+      ctx.translate(cx, cy); ctx.rotate(L.rot || 0);
+      // إطار أبيض ناعم + ظلّ ليبرز كملصق صورة
+      ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = w * 0.06; ctx.shadowOffsetY = w * 0.02;
+      const pad = w * 0.03, rr = w * 0.05;
+      ctx.fillStyle = "#fff"; roundRect(ctx, -w / 2 - pad, -h / 2 - pad, w + pad * 2, h + pad * 2, rr); ctx.fill();
+      ctx.shadowColor = "transparent";
+      ctx.save(); roundRect(ctx, -w / 2, -h / 2, w, h, rr * 0.7); ctx.clip();
+      ctx.drawImage(L.img, -w / 2, -h / 2, w, h); ctx.restore();
+      if (cardState.sel === i) { // إطار اختيار
+        ctx.strokeStyle = "#c8a24a"; ctx.lineWidth = Math.max(2, w * 0.012); ctx.setLineDash([w * 0.04, w * 0.03]);
+        roundRect(ctx, -w / 2 - pad, -h / 2 - pad, w + pad * 2, h + pad * 2, rr); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.restore();
+    });
   }
 
   const STATIC_ANIM = { bgZoom: 1, textAlpha: 1, textDy: 0, uiAlpha: 1 };
@@ -795,7 +920,7 @@
 
     if (hasImg) {
       ctx.save(); ctx.filter = filterString(cardState.filter);
-      drawBg(ctx, cardState.bgImage, W, H, { zoom: (cardState.img.zoom || 1) * anim.bgZoom, ox: cardState.img.ox, oy: cardState.img.oy });
+      drawBg(ctx, cardState.bgImage, W, H, { zoom: (cardState.img.zoom || 1) * anim.bgZoom, ox: cardState.img.ox, oy: cardState.img.oy, fit: cardState.img.fit });
       ctx.restore();
       const d = cardState.filter.dark;
       const ov = ctx.createLinearGradient(0, 0, 0, H);
@@ -817,7 +942,8 @@
     }
 
     // زخرفة مركزية أنيقة تملأ الفراغ (للبطاقات بلا صورة/خلفية مشهدية)
-    if (!hasImg && !cardState.bg) drawMedallion(ctx, W, H, u, accent);
+    if (!hasImg && !cardState.bg && !(cardState.layers && cardState.layers.length)) drawMedallion(ctx, W, H, u, accent);
+    drawLayers(ctx, W, H);
 
     const fm = u * 0.045;
     drawFrame(ctx, W, H, u, accent, cardState.frame);
@@ -869,13 +995,18 @@
     lines = wrapLines(ctx, cardState.text, maxW);
     ctx.globalAlpha = anim.textAlpha;
     if (hasImg) { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = u * 0.022; ctx.shadowOffsetY = u * 0.004; }
-    const lh = size * 1.75, startY = (areaTop + areaBot) / 2 - ((lines.length - 1) * lh) / 2 + (anim.textDy || 0);
+    const lh = size * 1.75;
+    let cyText = (areaTop + areaBot) / 2;
+    if (cardState.textPos === "top") cyText = areaTop + (Math.min(lines.length, 4) * lh) / 2;
+    else if (cardState.textPos === "bottom") cyText = areaBot - (Math.min(lines.length, 4) * lh) / 2;
+    const startY = cyText - ((lines.length - 1) * lh) / 2 + (anim.textDy || 0);
+    const hideText = cardState.textPos === "hide";
     if (cardState.textColor === "gold") {
       ctx.fillStyle = goldFill(ctx, startY - lh * 0.7, startY + (lines.length - 1) * lh + lh * 0.7);
     } else {
       ctx.fillStyle = cardState.textColor || fg;
     }
-    lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
+    if (!hideText) lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
     ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
     ctx.globalAlpha = 1;
 

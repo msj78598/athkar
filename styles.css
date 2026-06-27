@@ -716,3 +716,9 @@ img, canvas, video { max-width: 100%; }
 .rail-sep { width: 26px; height: 1px; background: var(--line); margin: 4px 0; }
 .stage-row .card-preview canvas { max-height: 48vh; }
 @media (min-width: 760px) { #colorRail .vrange { height: 180px; max-height: 180px; } }
+
+/* ===== طبقات الصور الإضافية ===== */
+.layers-list { display: flex; flex-wrap: wrap; gap: 7px; margin: 6px 0 4px; }
+.layer-chip { padding: 8px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-family: "Tajawal"; font-size: .85rem; color: var(--text); }
+.layer-chip.active { background: var(--accent); border-color: var(--accent); color: #0c1716; font-weight: 700; }
+.layer-controls { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-top: 6px; }
