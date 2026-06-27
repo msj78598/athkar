@@ -500,7 +500,7 @@
                 <button class="act full" id="removePhoto">✖ إزالة الخلفية</button>
               </div>
               <div class="mini-label">صور إضافية فوق التصميم</div>
-              <label class="act full upload-label">➕ أضف صورة فوق (صور أبنائك مثلًا)
+              <label class="act full upload-label">➕ أضف صورة فوق التصميم
                 <input type="file" id="layerInput" accept="image/*" hidden /></label>
               <div id="layersBox"></div>
               <div class="mini-label">موضع النصّ</div>
@@ -871,18 +871,23 @@
       if (!L.img || !L.img.complete) return;
       const w = W * (L.scale || 0.45), h = w * (L.img.height / L.img.width);
       const cx = W * (L.cx != null ? L.cx : 0.5), cy = H * (L.cy != null ? L.cy : 0.5);
+      const rr = w * 0.035;
       ctx.save();
       ctx.translate(cx, cy); ctx.rotate(L.rot || 0);
-      // إطار أبيض ناعم + ظلّ ليبرز كملصق صورة
-      ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = w * 0.06; ctx.shadowOffsetY = w * 0.02;
-      const pad = w * 0.03, rr = w * 0.05;
-      ctx.fillStyle = "#fff"; roundRect(ctx, -w / 2 - pad, -h / 2 - pad, w + pad * 2, h + pad * 2, rr); ctx.fill();
-      ctx.shadowColor = "transparent";
-      ctx.save(); roundRect(ctx, -w / 2, -h / 2, w, h, rr * 0.7); ctx.clip();
+      // ظلّ خفيف فقط (بلا إطار أبيض عريض)
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.32)"; ctx.shadowBlur = w * 0.045; ctx.shadowOffsetY = w * 0.012;
+      ctx.fillStyle = "#000"; roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.fill();
+      ctx.restore();
+      // الصورة بزوايا دائرية
+      ctx.save(); roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.clip();
       ctx.drawImage(L.img, -w / 2, -h / 2, w, h); ctx.restore();
+      // خطّ أبيض رفيع جدًا لفصلها عن الخلفية
+      ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = Math.max(1, w * 0.005);
+      roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.stroke();
       if (cardState.sel === i) { // إطار اختيار
-        ctx.strokeStyle = "#c8a24a"; ctx.lineWidth = Math.max(2, w * 0.012); ctx.setLineDash([w * 0.04, w * 0.03]);
-        roundRect(ctx, -w / 2 - pad, -h / 2 - pad, w + pad * 2, h + pad * 2, rr); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = "#c8a24a"; ctx.lineWidth = Math.max(2, w * 0.011); ctx.setLineDash([w * 0.04, w * 0.03]);
+        roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.stroke(); ctx.setLineDash([]);
       }
       ctx.restore();
     });
