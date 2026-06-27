@@ -688,3 +688,28 @@ img, canvas, video { max-width: 100%; }
 #colorRail .vrange { height: 22vh; max-height: 200px; }
 #colorRail .vsw { width: 26px; height: 26px; }
 @media (min-width: 760px) { .nav-rail { display: none; } #colorRail .vrange { height: 220px; } }
+
+/* ===== تحسين مظهر المقاييس الجانبية: حاويات مؤطّرة متناسقة ===== */
+.stage-row { gap: 7px; align-items: center; }
+.side-rail.nav-rail, #colorRail {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 9px 6px;
+  box-shadow: var(--shadow);
+  gap: 6px;
+}
+.nav-rail .tool {
+  border: none; background: transparent; box-shadow: none;
+  width: 38px; height: 38px; border-radius: 12px; opacity: .8;
+}
+.nav-rail .tool:hover { opacity: 1; background: var(--surface-2); }
+.nav-rail .tool.active { background: var(--accent); opacity: 1; }
+#colorRail .vrange { height: 150px; max-height: 150px; width: 24px; }
+#colorRail .vsw { width: 25px; height: 25px; border-width: 2px; }
+#colorRail .vsw.pick { width: 25px; height: 25px; }
+.rail-end { color: var(--accent); opacity: .9; }
+.rail-end.big { font-size: 1.25rem; }
+.rail-sep { width: 26px; height: 1px; background: var(--line); margin: 4px 0; }
+.stage-row .card-preview canvas { max-height: 48vh; }
+@media (min-width: 760px) { #colorRail .vrange { height: 180px; max-height: 180px; } }
