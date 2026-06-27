@@ -354,7 +354,8 @@
           </div>
         </div>
         <div class="card-controls">
-          <details class="ctl" open>
+          <div class="card-toolbar" id="cardToolbar"><button class="tool active" data-target="ctlLib">📚 الذكر</button><button class="tool" data-target="ctlDesign">🎨 التصميم</button><button class="tool" data-target="sizeThumbs">📐 المقاس</button><button class="tool" data-target="ctlText">✏️ النص</button><button class="tool" data-target="photoDetails">📷 صورة</button><button class="tool" data-target="ctlGift">🎁 إهداء</button><button class="tool" data-target="ctlCustom">✍️ خاص</button></div>
+          <details class="ctl" id="ctlLib" open>
             <summary>📚 اختر الذكر (${CARD_POOL.length}+ ذكرًا)</summary>
             <div class="ctl-body">
               <input id="libSearch" class="hisn-search" type="search" placeholder="🔍 ابحث في كل أذكار التطبيق…" />
@@ -362,7 +363,7 @@
               <div class="lib-list" id="libList"></div>
             </div>
           </details>
-          <details class="ctl">
+          <details class="ctl" id="ctlGift">
             <summary>🎁 إهداء دعاء (من / إلى)</summary>
             <div class="ctl-body custom-box">
               <input id="giftTo" type="text" placeholder="إلى (مثل: الصديق الغالي أبو أحمد)" value="${esc(cardState.toName)}" />
@@ -370,7 +371,7 @@
               <p class="drag-hint">اختر دعاءً من مكتبة «إهداء ودعوات» أو «تهاني ومناسبات»، أضف الأسماء، وشاركه هديةً.</p>
             </div>
           </details>
-          <details class="ctl" open>
+          <details class="ctl" id="ctlDesign" open>
             <summary>🎨 التصميم</summary>
             <div class="ctl-body">
               <div class="mini-label">الألوان</div>
@@ -383,7 +384,7 @@
               <div class="chips-row" id="patternRow">${PATTERNS.map(p => `<button class="chip ${cardState.pattern === p.k ? "active" : ""}" data-pattern="${p.k}">${p.n}</button>`).join("")}</div>
             </div>
           </details>
-          <details class="ctl">
+          <details class="ctl" id="ctlText">
             <summary>✏️ حجم النص ولونه</summary>
             <div class="ctl-body">
               ${sliderHTML("textScale", "حجم النص", 60, 170, 5, Math.round(cardState.textScale * 100))}
@@ -412,7 +413,7 @@
               </div>
             </div>
           </details>
-          <details class="ctl">
+          <details class="ctl" id="ctlCustom">
             <summary>✍️ اكتب ذكرك الخاص</summary>
             <div class="ctl-body custom-box">
               <input id="customTitle" type="text" placeholder="العنوان (اختياري) — مثل: أذكار الصباح" value="${esc(cardState.title)}" />
@@ -428,6 +429,12 @@
     view.querySelector("#libList").innerHTML = libItemsHTML(0);
     if (cardState.bgImage) view.querySelector("#filterPanel").classList.remove("hidden");
     bindCardEvents();
+    view.querySelectorAll("#cardToolbar .tool").forEach(b => b.addEventListener("click", () => {
+      const el = document.getElementById(b.dataset.target); if (!el) return;
+      if (el.tagName === "DETAILS") el.open = true;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      view.querySelectorAll("#cardToolbar .tool").forEach(x => x.classList.toggle("active", x === b));
+    }));
     ensureFontsThenDraw();
     window.scrollTo(0, 0);
   }

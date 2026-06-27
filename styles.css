@@ -200,7 +200,7 @@ body {
 
 /* ===== البطاقات ===== */
 .card-preview { display: flex; justify-content: center; margin: 6px 0 16px; }
-.card-preview canvas { width: auto; height: auto; max-width: 100%; max-height: 62vh; border-radius: 18px; box-shadow: var(--shadow); }
+.card-preview canvas { width: auto; height: auto; max-width: 100%; max-height: 46vh; border-radius: 18px; box-shadow: var(--shadow); }
 .upload-label { display: block; text-align: center; cursor: pointer; }
 .filter-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-top: 10px; }
 .slider-box { margin: 12px 2px; }
@@ -465,6 +465,8 @@ details.ctl[open] > summary::after { transform: rotate(180deg); }
   .card-stage { position: sticky; top: 86px; }
   .card-actions { grid-template-columns: repeat(2, 1fr); }
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
+  .card-preview canvas { max-height: 72vh; }
+  .card-toolbar { display: none; } /* لا حاجة له: الخيارات ظاهرة بجانب البطاقة */
 }
 
 @media (min-width: 1024px) {
@@ -599,3 +601,20 @@ img, canvas, video { max-width: 100%; }
 }
 .ayah-text { font-family: "UthmanicHafs", "Amiri Quran", serif; line-height: 2.6; }
 .dhikr-text.quran { font-family: "UthmanicHafs", "Amiri Quran", serif; line-height: 2.7; }
+
+/* ===== شريط استكشاف ميزات البطاقة (للجوال) ===== */
+.card-toolbar {
+  display: flex; gap: 8px; overflow-x: auto; padding: 10px 2px 12px;
+  margin: 0 0 8px; -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+}
+.card-toolbar::-webkit-scrollbar { display: none; }
+.card-toolbar .tool {
+  flex: 0 0 auto; padding: 10px 15px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface);
+  font-family: "Tajawal"; font-weight: 700; font-size: .9rem;
+  color: var(--text); cursor: pointer; white-space: nowrap; transition: .15s;
+}
+.card-toolbar .tool:active { transform: scale(.93); }
+.card-toolbar .tool.active { background: var(--accent); color: #0c1716; border-color: var(--accent); }
