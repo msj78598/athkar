@@ -378,18 +378,24 @@
       <div class="cards-layout">
         <div class="card-stage">
           <div class="stage-row">
-            <div class="side-rail" id="sizeRail">
-              <span class="rail-end big">أ</span>
-              <input type="range" class="vrange" id="vTextScale" min="60" max="170" step="5" value="${Math.round(cardState.textScale * 100)}" title="حجم الخط" />
-              <span class="rail-end">أ</span>
-              <span class="rail-tag">الحجم</span>
+            <div class="side-rail nav-rail" id="cardToolbar">
+              <button class="tool active" data-target="ctlLib" title="اختر الذكر">📚</button>
+              <button class="tool" data-target="ctlDesign" title="التصميم والألوان">🎨</button>
+              <button class="tool" data-target="sizeThumbs" title="مقاس البطاقة">📐</button>
+              <button class="tool" data-target="ctlText" title="حجم النص ولونه">✏️</button>
+              <button class="tool" data-target="photoDetails" title="صورة وفلاتر">📷</button>
+              <button class="tool" data-target="ctlGift" title="إهداء دعاء">🎁</button>
+              <button class="tool" data-target="ctlCustom" title="ذكر خاص">✍️</button>
             </div>
             <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
             <div class="side-rail" id="colorRail">
-              <button class="vsw reset ${cardState.textColor ? "" : "active"}" data-col="" title="اللون الافتراضي">↺</button>
-              ${RAIL_COLORS.map(c => `<button class="vsw ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${c}" title="لون"></button>`).join("")}
+              <span class="rail-end big">أ</span>
+              <input type="range" class="vrange" id="vTextScale" min="60" max="170" step="5" value="${Math.round(cardState.textScale * 100)}" title="حجم الخط" />
+              <span class="rail-end">أ</span>
+              <div class="rail-sep"></div>
+              <button class="vsw reset ${cardState.textColor ? "" : "active"}" data-col="" title="افتراضي">↺</button>
+              ${RAIL_COLORS.slice(0, 4).map(c => `<button class="vsw ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${c}" title="لون"></button>`).join("")}
               <label class="vsw pick" title="لون مخصّص"><input type="color" id="vColorPick" value="#ffffff" /></label>
-              <span class="rail-tag">اللون</span>
             </div>
           </div>
           <div class="size-thumbs" id="sizeThumbs">${sizeThumbs}</div>
@@ -401,7 +407,6 @@
           </div>
         </div>
         <div class="card-controls">
-          <div class="card-toolbar" id="cardToolbar"><button class="tool active" data-target="ctlLib">📚 الذكر</button><button class="tool" data-target="ctlDesign">🎨 التصميم</button><button class="tool" data-target="sizeThumbs">📐 المقاس</button><button class="tool" data-target="ctlText">✏️ النص</button><button class="tool" data-target="photoDetails">📷 صورة</button><button class="tool" data-target="ctlGift">🎁 إهداء</button><button class="tool" data-target="ctlCustom">✍️ خاص</button></div>
           <details class="ctl" id="ctlLib" open>
             <summary>📚 اختر الذكر (${CARD_POOL.length}+ ذكرًا)</summary>
             <div class="ctl-body">
@@ -1055,23 +1060,111 @@
 
   /* ============== تبويب المواقيت ============== */
   const REGIONS = [
-    { name: "مكة المكرمة", city: "Makkah", country: "Saudi Arabia", method: 4 },
-    { name: "المدينة المنورة", city: "Madinah", country: "Saudi Arabia", method: 4 },
-    { name: "الرياض", city: "Riyadh", country: "Saudi Arabia", method: 4 },
-    { name: "جدة", city: "Jeddah", country: "Saudi Arabia", method: 4 },
-    { name: "الدمام", city: "Dammam", country: "Saudi Arabia", method: 4 },
-    { name: "أبها", city: "Abha", country: "Saudi Arabia", method: 4 },
-    { name: "القاهرة", city: "Cairo", country: "Egypt", method: 5 },
-    { name: "دبي", city: "Dubai", country: "United Arab Emirates", method: 8 },
-    { name: "الكويت", city: "Kuwait City", country: "Kuwait", method: 9 },
-    { name: "الدوحة", city: "Doha", country: "Qatar", method: 4 },
-    { name: "المنامة", city: "Manama", country: "Bahrain", method: 4 },
-    { name: "مسقط", city: "Muscat", country: "Oman", method: 8 },
-    { name: "عمّان", city: "Amman", country: "Jordan", method: 23 },
-    { name: "بغداد", city: "Baghdad", country: "Iraq", method: 3 },
-    { name: "بيروت", city: "Beirut", country: "Lebanon", method: 3 },
-    { name: "الخرطوم", city: "Khartoum", country: "Sudan", method: 5 },
-    { name: "إسطنبول", city: "Istanbul", country: "Turkey", method: 13 }
+    { name: "مكة المكرمة", group: "منطقة مكة المكرمة", coords: true, lat: 21.3891, lng: 39.8579, method: 4 },
+    { name: "جدة", group: "منطقة مكة المكرمة", coords: true, lat: 21.4858, lng: 39.1925, method: 4 },
+    { name: "الطائف", group: "منطقة مكة المكرمة", coords: true, lat: 21.2854, lng: 40.4183, method: 4 },
+    { name: "القنفذة", group: "منطقة مكة المكرمة", coords: true, lat: 19.1264, lng: 41.0789, method: 4 },
+    { name: "رابغ", group: "منطقة مكة المكرمة", coords: true, lat: 22.7986, lng: 39.0349, method: 4 },
+    { name: "الليث", group: "منطقة مكة المكرمة", coords: true, lat: 20.15, lng: 40.267, method: 4 },
+    { name: "الجموم", group: "منطقة مكة المكرمة", coords: true, lat: 21.619, lng: 39.697, method: 4 },
+    { name: "خليص", group: "منطقة مكة المكرمة", coords: true, lat: 22.153, lng: 39.317, method: 4 },
+    { name: "تربة", group: "منطقة مكة المكرمة", coords: true, lat: 21.215, lng: 41.63, method: 4 },
+    { name: "رنية", group: "منطقة مكة المكرمة", coords: true, lat: 21.267, lng: 42.85, method: 4 },
+    { name: "أضم", group: "منطقة مكة المكرمة", coords: true, lat: 20.76, lng: 41, method: 4 },
+    { name: "المدينة المنورة", group: "منطقة المدينة المنورة", coords: true, lat: 24.5247, lng: 39.5692, method: 4 },
+    { name: "ينبع", group: "منطقة المدينة المنورة", coords: true, lat: 24.0895, lng: 38.0618, method: 4 },
+    { name: "العلا", group: "منطقة المدينة المنورة", coords: true, lat: 26.608, lng: 37.922, method: 4 },
+    { name: "بدر", group: "منطقة المدينة المنورة", coords: true, lat: 23.78, lng: 38.79, method: 4 },
+    { name: "الحناكية", group: "منطقة المدينة المنورة", coords: true, lat: 24.887, lng: 40.518, method: 4 },
+    { name: "مهد الذهب", group: "منطقة المدينة المنورة", coords: true, lat: 23.49, lng: 40.86, method: 4 },
+    { name: "خيبر", group: "منطقة المدينة المنورة", coords: true, lat: 25.7, lng: 39.29, method: 4 },
+    { name: "الرياض", group: "منطقة الرياض", coords: true, lat: 24.7136, lng: 46.6753, method: 4 },
+    { name: "الخرج", group: "منطقة الرياض", coords: true, lat: 24.1554, lng: 47.3346, method: 4 },
+    { name: "الدوادمي", group: "منطقة الرياض", coords: true, lat: 24.5074, lng: 44.3922, method: 4 },
+    { name: "المجمعة", group: "منطقة الرياض", coords: true, lat: 25.9039, lng: 45.345, method: 4 },
+    { name: "الزلفي", group: "منطقة الرياض", coords: true, lat: 26.2997, lng: 44.8048, method: 4 },
+    { name: "وادي الدواسر", group: "منطقة الرياض", coords: true, lat: 20.4504, lng: 44.7855, method: 4 },
+    { name: "عفيف", group: "منطقة الرياض", coords: true, lat: 23.9065, lng: 42.9176, method: 4 },
+    { name: "القويعية", group: "منطقة الرياض", coords: true, lat: 24.072, lng: 45.262, method: 4 },
+    { name: "شقراء", group: "منطقة الرياض", coords: true, lat: 25.24, lng: 45.252, method: 4 },
+    { name: "حوطة بني تميم", group: "منطقة الرياض", coords: true, lat: 23.523, lng: 46.853, method: 4 },
+    { name: "الأفلاج", group: "منطقة الرياض", coords: true, lat: 22.287, lng: 46.733, method: 4 },
+    { name: "الحريق", group: "منطقة الرياض", coords: true, lat: 23.62, lng: 46.15, method: 4 },
+    { name: "بريدة", group: "منطقة القصيم", coords: true, lat: 26.326, lng: 43.975, method: 4 },
+    { name: "عنيزة", group: "منطقة القصيم", coords: true, lat: 26.084, lng: 43.994, method: 4 },
+    { name: "الرس", group: "منطقة القصيم", coords: true, lat: 25.869, lng: 43.497, method: 4 },
+    { name: "المذنب", group: "منطقة القصيم", coords: true, lat: 25.862, lng: 44.221, method: 4 },
+    { name: "البكيرية", group: "منطقة القصيم", coords: true, lat: 26.139, lng: 43.654, method: 4 },
+    { name: "البدائع", group: "منطقة القصيم", coords: true, lat: 26, lng: 43.767, method: 4 },
+    { name: "رياض الخبراء", group: "منطقة القصيم", coords: true, lat: 26.056, lng: 43.506, method: 4 },
+    { name: "عيون الجواء", group: "منطقة القصيم", coords: true, lat: 26, lng: 43.7, method: 4 },
+    { name: "الدمام", group: "المنطقة الشرقية", coords: true, lat: 26.4207, lng: 50.0888, method: 4 },
+    { name: "الخبر", group: "المنطقة الشرقية", coords: true, lat: 26.2172, lng: 50.1971, method: 4 },
+    { name: "الظهران", group: "المنطقة الشرقية", coords: true, lat: 26.288, lng: 50.114, method: 4 },
+    { name: "الأحساء (الهفوف)", group: "المنطقة الشرقية", coords: true, lat: 25.3833, lng: 49.5867, method: 4 },
+    { name: "الجبيل", group: "المنطقة الشرقية", coords: true, lat: 27.0046, lng: 49.6606, method: 4 },
+    { name: "القطيف", group: "المنطقة الشرقية", coords: true, lat: 26.565, lng: 49.996, method: 4 },
+    { name: "حفر الباطن", group: "المنطقة الشرقية", coords: true, lat: 28.4326, lng: 45.9636, method: 4 },
+    { name: "الخفجي", group: "المنطقة الشرقية", coords: true, lat: 28.4392, lng: 48.491, method: 4 },
+    { name: "رأس تنورة", group: "المنطقة الشرقية", coords: true, lat: 26.642, lng: 50.158, method: 4 },
+    { name: "بقيق", group: "المنطقة الشرقية", coords: true, lat: 25.934, lng: 49.667, method: 4 },
+    { name: "النعيرية", group: "المنطقة الشرقية", coords: true, lat: 27.467, lng: 48.483, method: 4 },
+    { name: "أبها", group: "منطقة عسير", coords: true, lat: 18.2164, lng: 42.5053, method: 4 },
+    { name: "خميس مشيط", group: "منطقة عسير", coords: true, lat: 18.3, lng: 42.729, method: 4 },
+    { name: "بيشة", group: "منطقة عسير", coords: true, lat: 19.9764, lng: 42.601, method: 4 },
+    { name: "النماص", group: "منطقة عسير", coords: true, lat: 19.15, lng: 42.12, method: 4 },
+    { name: "محايل عسير", group: "منطقة عسير", coords: true, lat: 18.55, lng: 42.05, method: 4 },
+    { name: "ظهران الجنوب", group: "منطقة عسير", coords: true, lat: 17.66, lng: 43.51, method: 4 },
+    { name: "سراة عبيدة", group: "منطقة عسير", coords: true, lat: 18.2, lng: 43, method: 4 },
+    { name: "تثليث", group: "منطقة عسير", coords: true, lat: 19.57, lng: 43.52, method: 4 },
+    { name: "رجال ألمع", group: "منطقة عسير", coords: true, lat: 18.19, lng: 42.3, method: 4 },
+    { name: "تبوك", group: "منطقة تبوك", coords: true, lat: 28.3838, lng: 36.555, method: 4 },
+    { name: "الوجه", group: "منطقة تبوك", coords: true, lat: 26.239, lng: 36.464, method: 4 },
+    { name: "ضباء", group: "منطقة تبوك", coords: true, lat: 27.35, lng: 35.69, method: 4 },
+    { name: "تيماء", group: "منطقة تبوك", coords: true, lat: 27.629, lng: 38.549, method: 4 },
+    { name: "أملج", group: "منطقة تبوك", coords: true, lat: 25.05, lng: 37.267, method: 4 },
+    { name: "حقل", group: "منطقة تبوك", coords: true, lat: 29.279, lng: 34.938, method: 4 },
+    { name: "حائل", group: "منطقة حائل", coords: true, lat: 27.5114, lng: 41.7208, method: 4 },
+    { name: "بقعاء", group: "منطقة حائل", coords: true, lat: 27.85, lng: 42.75, method: 4 },
+    { name: "الغزالة", group: "منطقة حائل", coords: true, lat: 26.93, lng: 41.7, method: 4 },
+    { name: "الشنان", group: "منطقة حائل", coords: true, lat: 27.22, lng: 42.18, method: 4 },
+    { name: "عرعر", group: "منطقة الحدود الشمالية", coords: true, lat: 30.9753, lng: 41.0381, method: 4 },
+    { name: "رفحاء", group: "منطقة الحدود الشمالية", coords: true, lat: 29.62, lng: 43.5, method: 4 },
+    { name: "طريف", group: "منطقة الحدود الشمالية", coords: true, lat: 31.677, lng: 38.663, method: 4 },
+    { name: "العويقيلة", group: "منطقة الحدود الشمالية", coords: true, lat: 30.33, lng: 42.2, method: 4 },
+    { name: "جازان", group: "منطقة جازان", coords: true, lat: 16.8892, lng: 42.5511, method: 4 },
+    { name: "صبيا", group: "منطقة جازان", coords: true, lat: 17.149, lng: 42.625, method: 4 },
+    { name: "أبو عريش", group: "منطقة جازان", coords: true, lat: 16.969, lng: 42.832, method: 4 },
+    { name: "صامطة", group: "منطقة جازان", coords: true, lat: 16.597, lng: 42.945, method: 4 },
+    { name: "بيش", group: "منطقة جازان", coords: true, lat: 17.376, lng: 42.591, method: 4 },
+    { name: "الدرب", group: "منطقة جازان", coords: true, lat: 17.722, lng: 42.253, method: 4 },
+    { name: "فرسان", group: "منطقة جازان", coords: true, lat: 16.7, lng: 42.117, method: 4 },
+    { name: "أحد المسارحة", group: "منطقة جازان", coords: true, lat: 16.71, lng: 42.95, method: 4 },
+    { name: "نجران", group: "منطقة نجران", coords: true, lat: 17.4917, lng: 44.1322, method: 4 },
+    { name: "شرورة", group: "منطقة نجران", coords: true, lat: 17.484, lng: 47.117, method: 4 },
+    { name: "حبونا", group: "منطقة نجران", coords: true, lat: 17.74, lng: 44.5, method: 4 },
+    { name: "بدر الجنوب", group: "منطقة نجران", coords: true, lat: 17.9, lng: 44.7, method: 4 },
+    { name: "الباحة", group: "منطقة الباحة", coords: true, lat: 20.0129, lng: 41.4677, method: 4 },
+    { name: "بلجرشي", group: "منطقة الباحة", coords: true, lat: 19.86, lng: 41.56, method: 4 },
+    { name: "المندق", group: "منطقة الباحة", coords: true, lat: 20.17, lng: 41.28, method: 4 },
+    { name: "المخواة", group: "منطقة الباحة", coords: true, lat: 19.75, lng: 41.43, method: 4 },
+    { name: "قلوة", group: "منطقة الباحة", coords: true, lat: 19.88, lng: 41.63, method: 4 },
+    { name: "العقيق", group: "منطقة الباحة", coords: true, lat: 20.27, lng: 41.64, method: 4 },
+    { name: "سكاكا", group: "منطقة الجوف", coords: true, lat: 29.9697, lng: 40.2064, method: 4 },
+    { name: "القريات", group: "منطقة الجوف", coords: true, lat: 31.332, lng: 37.342, method: 4 },
+    { name: "دومة الجندل", group: "منطقة الجوف", coords: true, lat: 29.812, lng: 39.867, method: 4 },
+    { name: "طبرجل", group: "منطقة الجوف", coords: true, lat: 30.5, lng: 38.22, method: 4 },
+    { name: "القاهرة", group: "دول عربية وإسلامية", city: "Cairo", country: "Egypt", method: 5 },
+    { name: "دبي", group: "دول عربية وإسلامية", city: "Dubai", country: "United Arab Emirates", method: 8 },
+    { name: "الكويت", group: "دول عربية وإسلامية", city: "Kuwait City", country: "Kuwait", method: 9 },
+    { name: "الدوحة", group: "دول عربية وإسلامية", city: "Doha", country: "Qatar", method: 4 },
+    { name: "المنامة", group: "دول عربية وإسلامية", city: "Manama", country: "Bahrain", method: 4 },
+    { name: "مسقط", group: "دول عربية وإسلامية", city: "Muscat", country: "Oman", method: 8 },
+    { name: "عمّان", group: "دول عربية وإسلامية", city: "Amman", country: "Jordan", method: 23 },
+    { name: "بغداد", group: "دول عربية وإسلامية", city: "Baghdad", country: "Iraq", method: 3 },
+    { name: "بيروت", group: "دول عربية وإسلامية", city: "Beirut", country: "Lebanon", method: 3 },
+    { name: "الخرطوم", group: "دول عربية وإسلامية", city: "Khartoum", country: "Sudan", method: 5 },
+    { name: "إسطنبول", group: "دول عربية وإسلامية", city: "Istanbul", country: "Turkey", method: 13 },
   ];
   const PRAYERS = [
     { k: "Fajr", n: "الفجر", ic: "🌅" }, { k: "Sunrise", n: "الشروق", ic: "☀️" },
@@ -1089,8 +1182,11 @@
   function renderPrayer() {
     appTitle.textContent = "مواقيت الصلاة";
     backBtn.classList.add("hidden");
-    const savedIdx = parseInt(localStorage.getItem(PRAYER_SETTINGS_KEY) || "2", 10);
-    const opts = REGIONS.map((r, i) => `<option value="${i}" ${i === savedIdx ? "selected" : ""}>${r.name}</option>`).join("");
+    let savedIdx = parseInt(localStorage.getItem(PRAYER_SETTINGS_KEY) || "0", 10);
+    if (!(savedIdx >= 0 && savedIdx < REGIONS.length)) savedIdx = 0;
+    const grp = {};
+    REGIONS.forEach((r, i) => { (grp[r.group] = grp[r.group] || []).push(i); });
+    const opts = Object.keys(grp).map(g => `<optgroup label="${g}">` + grp[g].map(i => `<option value="${i}" ${i === savedIdx ? "selected" : ""}>${REGIONS[i].name}</option>`).join("") + `</optgroup>`).join("");
     view.innerHTML = `
       <div class="prayer-top">
         <select id="regionSel" class="region-sel">${opts}</select>
