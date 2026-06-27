@@ -305,7 +305,25 @@ const CARD_THEMES = [
   { name: "وردي ذهبي", bg: ["#5e2233", "#8a3a52"], fg: "#fff5f7", accent: "#f0cf9a", sub: "#eccdd6", pattern: "corners" },
   { name: "منتصف الليل", bg: ["#04060f", "#0e1630"], fg: "#eef1f8", accent: "#c0c8e0", sub: "#8b97b8", pattern: "stars" },
   { name: "نيلي وفضي", bg: ["#1a2a3a", "#26506b"], fg: "#f4f8fb", accent: "#cfd8e3", sub: "#a9c0d4", pattern: "frame" },
-  { name: "زيتوني", bg: ["#33361d", "#5a5e2e"], fg: "#fbfce8", accent: "#e9d27a", sub: "#d4d8a8", pattern: "dots" }
+  { name: "زيتوني", bg: ["#33361d", "#5a5e2e"], fg: "#fbfce8", accent: "#e9d27a", sub: "#d4d8a8", pattern: "dots" },
+  { name: "بنفسجي ملكي", bg: ["#1a0b2e", "#3b1768", "#5b2a9d"], fg: "#f6f0ff", accent: "#f0d98c", sub: "#cbb6e8", pattern: "girih", grad: "radial" },
+  { name: "فيروزي ملكي", bg: ["#03363d", "#0a6b73", "#0d8a8a"], fg: "#effdff", accent: "#ffe08a", sub: "#bdeaec", pattern: "arabesque", grad: "radial" },
+  { name: "نبيذي فاخر", bg: ["#2a0a14", "#5e1226", "#7d1f33"], fg: "#fff0f2", accent: "#e9c07d", sub: "#e3bcc6", pattern: "corners", grad: "diag" },
+  { name: "بترولي", bg: ["#04181f", "#0a3b46", "#10626b"], fg: "#eafbff", accent: "#f3d27a", sub: "#a9d2d8", pattern: "waves", grad: "vert" },
+  { name: "ذهبي ليلي", bg: ["#000000", "#171206", "#2a1f08"], fg: "#fbf3df", accent: "#e8c45a", sub: "#c2ac7e", pattern: "girih", grad: "radial" },
+  { name: "زمردي داكن", bg: ["#021a14", "#06402b", "#0a5c3d"], fg: "#ecfff5", accent: "#ecd07e", sub: "#aeddc6", pattern: "scales", grad: "radial" },
+  { name: "شفقي", bg: ["#0b1437", "#3a2a6b", "#7a4a8c"], fg: "#f4f1ff", accent: "#ffd98a", sub: "#cdbfe6", pattern: "stars", grad: "diag" },
+  { name: "غروب دافئ", bg: ["#2b1331", "#7a2c52", "#c25a3e"], fg: "#fff3ec", accent: "#ffe2a3", sub: "#f0c8c0", pattern: "rays", grad: "diagUp" },
+  { name: "محيطي", bg: ["#062a4a", "#0f5b86", "#1a86b0"], fg: "#eefaff", accent: "#ffe08a", sub: "#bce0f0", pattern: "waves", grad: "vert" },
+  { name: "صحراوي", bg: ["#3a2410", "#7a4e20", "#b07a36"], fg: "#fff6e8", accent: "#ffe3a3", sub: "#e8cfa6", pattern: "chevron", grad: "diag" },
+  { name: "أرجواني فضي", bg: ["#241a33", "#4a3a66"], fg: "#f5f1fb", accent: "#d8d0e8", sub: "#b8acca", pattern: "frame", grad: "radial" },
+  { name: "أزرق نيلي", bg: ["#0a1a3f", "#15356e", "#1f4fa0"], fg: "#eef4ff", accent: "#f3cf6b", sub: "#b9cdef", pattern: "rays", grad: "diag" },
+  { name: "كريمي مذهّب", bg: ["#f6efe0", "#e6d8bd"], fg: "#2c2317", accent: "#b8860b", sub: "#6f6147", pattern: "corners", grad: "diag" },
+  { name: "لؤلؤي ناعم", bg: ["#fbfaf7", "#ebe7df"], fg: "#27303a", accent: "#bfa15a", sub: "#6b7480", pattern: "dots", grad: "radial" },
+  { name: "رمادي أنيق", bg: ["#2b2f33", "#474d54"], fg: "#f3f5f7", accent: "#d9b86a", sub: "#bcc4cc", pattern: "frame", grad: "diag" },
+  { name: "وردي فاتح", bg: ["#fde7ec", "#f6cdd8"], fg: "#3a2230", accent: "#b06a86", sub: "#8a5a6c", pattern: "corners", grad: "radial" },
+  { name: "سماوي فاتح", bg: ["#eaf6fb", "#cfe6f2"], fg: "#1d3344", accent: "#3a7ca5", sub: "#5a7689", pattern: "dots", grad: "radial" },
+  { name: "ميدان أخضر", bg: ["#eaf5ec", "#cfe6d4"], fg: "#1f3a28", accent: "#3f7a52", sub: "#577a63", pattern: "corners", grad: "diag" }
 ];
 
 if (typeof module !== "undefined") module.exports = { TICKER_TASBIH, TICKER_ISTIGHFAR, CARD_GROUPS, CARD_THEMES };

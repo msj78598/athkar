@@ -376,7 +376,7 @@
     let chips = CARD_GROUPS.map((g, i) => `<button class="chip gchip ${i === 0 ? "active" : ""}" data-g="${i}">${g.icon} ${g.name}</button>`).join("");
     let themes = CARD_THEMES.map((t, i) =>
       `<button class="theme-dot ${i === cardState.theme ? "active" : ""}" data-t="${i}" title="${t.name}"
-        style="background:linear-gradient(135deg,${t.bg[0]},${t.bg[1]})"><span style="color:${t.accent}">۞</span></button>`).join("");
+        style="background:${t.grad === "radial" ? "radial-gradient(circle at 50% 40%," + t.bg.join(",") + ")" : "linear-gradient(135deg," + t.bg.join(",") + ")"}"><span style="color:${t.accent}">۞</span></button>`).join("");
     let sizeThumbs = SIZES.map((s, i) => {
       const ar = s.w / s.h; let bw, bh;
       if (ar <= 1) { bh = 40; bw = Math.round(40 * ar); } else { bw = 40; bh = Math.round(40 / ar); }
@@ -754,8 +754,16 @@
     ctx.imageSmoothingEnabled = true; try { ctx.imageSmoothingQuality = "high"; } catch (e) {}
     ctx.clearRect(0, 0, W, H);
 
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
+    const gt = th.grad || "diag";
+    let g;
+    if (gt === "radial") g = ctx.createRadialGradient(W * 0.5, H * 0.40, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.78);
+    else if (gt === "vert") g = ctx.createLinearGradient(0, 0, 0, H);
+    else if (gt === "horiz") g = ctx.createLinearGradient(0, 0, W, 0);
+    else if (gt === "diagUp") g = ctx.createLinearGradient(0, H, W, 0);
+    else g = ctx.createLinearGradient(0, 0, W, H);
+    const bg = th.bg;
+    if (bg.length >= 3) { g.addColorStop(0, bg[0]); g.addColorStop(0.5, bg[1]); g.addColorStop(1, bg[2]); }
+    else { g.addColorStop(0, bg[0]); g.addColorStop(1, bg[1]); }
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
     if (hasImg) {
