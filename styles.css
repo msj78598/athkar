@@ -618,3 +618,58 @@ img, canvas, video { max-width: 100%; }
 }
 .card-toolbar .tool:active { transform: scale(.93); }
 .card-toolbar .tool.active { background: var(--accent); color: #0c1716; border-color: var(--accent); }
+
+/* ===== المقاييس الجانبية للبطاقة (حجم الخط + اللون) ===== */
+.stage-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.stage-row .card-preview { flex: 0 1 auto; margin: 6px 0; min-width: 0; }
+.side-rail { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
+.rail-tag { font-size: .68rem; color: var(--text-muted); font-weight: 700; margin-top: 2px; }
+.rail-end { color: var(--text-muted); font-family: "Amiri Quran", serif; line-height: 1; }
+.rail-end.big { font-size: 1.35rem; }
+.rail-end:not(.big) { font-size: .8rem; }
+.vrange {
+  -webkit-appearance: slider-vertical; appearance: slider-vertical;
+  writing-mode: vertical-lr; direction: rtl;
+  width: 26px; height: 38vh; max-height: 320px;
+  accent-color: var(--accent); cursor: pointer;
+}
+.vcolors { display: flex; flex-direction: column; gap: 7px; }
+.vsw {
+  width: 28px; height: 28px; border-radius: 50%; padding: 0;
+  border: 2px solid var(--line); cursor: pointer;
+  display: grid; place-items: center; font-size: .85rem; color: var(--text-muted);
+  transition: transform .12s, box-shadow .12s; background: var(--surface);
+}
+.vsw.active { border-color: var(--accent); transform: scale(1.14); box-shadow: 0 0 0 2px var(--accent); }
+.vsw.pick { position: relative; overflow: hidden; background: conic-gradient(#f55,#fb3,#fd3,#6d6,#3cc,#46f,#b4f,#f55); }
+.vsw.pick input { position: absolute; inset: -4px; opacity: 0; cursor: pointer; }
+@media (min-width: 760px) { .vrange { height: 320px; } }
+
+/* ===== بانر النشر (صدقة جارية) + عدّاد الزوّار ===== */
+.share-banner {
+  background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+  border: 1px solid var(--accent-soft); border-radius: var(--radius);
+  padding: 14px 16px; margin: 0 0 18px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  box-shadow: var(--shadow);
+}
+[data-theme="dark"] .share-banner { background: linear-gradient(135deg, #12302f, #0f2423); }
+.share-banner .sb-main { display: flex; align-items: center; gap: 11px; flex: 1 1 180px; }
+.share-banner .sb-emoji { font-size: 1.9rem; }
+.share-banner .sb-txt { display: flex; flex-direction: column; }
+.share-banner .sb-txt b { color: #fff; font-size: 1.02rem; }
+.share-banner .sb-txt small { color: var(--accent-soft); font-size: .8rem; line-height: 1.5; margin-top: 2px; }
+.sb-share {
+  flex: 0 0 auto; background: var(--accent); color: #0c1716;
+  border: none; border-radius: 12px; padding: 11px 18px;
+  font-family: "Tajawal"; font-weight: 700; font-size: .95rem; cursor: pointer;
+  transition: transform .12s, filter .2s;
+}
+.sb-share:active { transform: scale(.94); }
+.sb-share:hover { filter: brightness(1.06); }
+.sb-count {
+  flex: 1 1 100%; text-align: center; color: var(--accent-soft);
+  font-size: .82rem; font-weight: 700; border-top: 1px solid rgba(230,207,149,.22);
+  padding-top: 10px; margin-top: 2px; min-height: 1px;
+}
+.sb-count:empty { display: none; }

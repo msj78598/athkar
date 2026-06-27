@@ -105,6 +105,13 @@
     backBtn.classList.add("hidden");
     goBack = null;
     let html = tickerHTML();
+    html += `<div class="share-banner">
+      <div class="sb-main"><span class="sb-emoji">🤲</span>
+        <div class="sb-txt"><b>اجعلها صدقةً جارية</b><small>دُلّ غيرك على الخير، فلك مثلُ أجرِ من عمل به</small></div>
+      </div>
+      <button class="sb-share" id="spreadBtn">📤 انشُر الأجر</button>
+      <div class="sb-count" id="visitCount"></div>
+    </div>`;
     // الأذكار اليومية والأدعية المختارة — صفوف مرتّبة موفّرة للمساحة
     html += `<div class="sec-title">الأذكار اليومية والأدعية</div><div class="acat-list">`;
     ADHKAR.forEach(cat => {
@@ -131,7 +138,32 @@
       s.addEventListener("input", () => renderHisnList(s.value));
     }
     document.getElementById("aboutBtn").addEventListener("click", renderAbout);
+    const spread = document.getElementById("spreadBtn");
+    if (spread) spread.addEventListener("click", spreadSite);
+    loadVisits();
     window.scrollTo(0, 0);
+  }
+  function spreadSite() {
+    const text = "🌿 أذكار — حصّن يومك بالأذكار الصحيحة الموثّقة، مع القرآن والتفسير الميسّر.\nدُلّ غيرك على الخير فلك مثلُ أجرِه، صدقةٌ جارية:\n";
+    const url = "https://" + SITE + "/";
+    if (navigator.share) { navigator.share({ title: "أذكار", text, url }).catch(() => {}); return; }
+    const b = document.getElementById("spreadBtn");
+    if (navigator.clipboard) navigator.clipboard.writeText(text + url).then(() => {
+      if (b) { const o = b.textContent; b.textContent = "✓ نُسِخ الرابط — انشُره"; setTimeout(() => b.textContent = o, 2200); }
+    });
+  }
+  async function loadVisits() {
+    const el = document.getElementById("visitCount"); if (!el) return;
+    const NS = "athkar-vercel-app";
+    try {
+      const inc = !sessionStorage.getItem("av_counted");
+      const u = "https://api.counterapi.dev/v1/" + NS + "/visits" + (inc ? "/up" : "/");
+      const r = await fetch(u); const j = await r.json();
+      const n = j && typeof j.count === "number" ? j.count : null;
+      if (n === null) { el.style.display = "none"; return; }
+      if (inc) sessionStorage.setItem("av_counted", "1");
+      el.textContent = "🌿 زارَنا " + n.toLocaleString("ar-EG") + " — جزى الله كلَّ من نشرها خيرًا";
+    } catch (e) { el.style.display = "none"; }
   }
   function countDone(cat) {
     let d = 0; cat.items.forEach((it, i) => { if (getRemaining(cat.id, i, it.count) === 0) d++; }); return d;
@@ -319,6 +351,7 @@
     { k: "rays", n: "✨ نور" }, { k: "bokeh", n: "تلألؤ" }
   ];
   const TEXT_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#ffd97d", "#f5c6d6", "#bfe8ee", "#1c2625", "#0c1716"];
+  const RAIL_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#f5c6d6", "#bfe8ee", "#0c1716"];
   function filterString(f) {
     return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) blur(${f.blur}px)`;
   }
@@ -344,7 +377,21 @@
     view.innerHTML = `
       <div class="cards-layout">
         <div class="card-stage">
-          <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
+          <div class="stage-row">
+            <div class="side-rail" id="sizeRail">
+              <span class="rail-end big">أ</span>
+              <input type="range" class="vrange" id="vTextScale" min="60" max="170" step="5" value="${Math.round(cardState.textScale * 100)}" title="حجم الخط" />
+              <span class="rail-end">أ</span>
+              <span class="rail-tag">الحجم</span>
+            </div>
+            <div class="card-preview" id="cardPreview"><canvas id="cardCanvas"></canvas></div>
+            <div class="side-rail" id="colorRail">
+              <button class="vsw reset ${cardState.textColor ? "" : "active"}" data-col="" title="اللون الافتراضي">↺</button>
+              ${RAIL_COLORS.map(c => `<button class="vsw ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${c}" title="لون"></button>`).join("")}
+              <label class="vsw pick" title="لون مخصّص"><input type="color" id="vColorPick" value="#ffffff" /></label>
+              <span class="rail-tag">اللون</span>
+            </div>
+          </div>
           <div class="size-thumbs" id="sizeThumbs">${sizeThumbs}</div>
           <div class="card-actions">
             <button class="act primary" id="shareCard">📤 مشاركة</button>
@@ -479,7 +526,7 @@
     // المنزلقات
     view.querySelectorAll(".frange").forEach(inp => inp.addEventListener("input", () => {
       const k = inp.dataset.key, val = parseFloat(inp.value);
-      if (k === "textScale") cardState.textScale = val / 100;
+      if (k === "textScale") { cardState.textScale = val / 100; const vr = document.getElementById("vTextScale"); if (vr) vr.value = inp.value; }
       else if (k === "zoom") cardState.img.zoom = val / 100;
       else cardState.filter[k] = (k === "dark" ? val / 100 : val);
       const vlab = document.getElementById("v_" + k); if (vlab) vlab.textContent = inp.value;
@@ -489,6 +536,7 @@
     view.querySelectorAll("#textColors .swatch[data-col]").forEach(b => b.addEventListener("click", () => {
       cardState.textColor = b.dataset.col;
       view.querySelectorAll("#textColors .swatch").forEach(x => x.classList.toggle("active", x === b));
+      view.querySelectorAll("#colorRail .vsw").forEach(x => x.classList.toggle("active", (x.dataset.col || "") === (b.dataset.col || "")));
       drawCard();
     }));
     const pick = view.querySelector("#textColorPick");
@@ -496,6 +544,28 @@
       cardState.textColor = pick.value;
       view.querySelectorAll("#textColors .swatch").forEach(x => x.classList.remove("active"));
       pick.parentElement.classList.add("active");
+      drawCard();
+    });
+    // المقياس العمودي لحجم الخط
+    const vts = view.querySelector("#vTextScale");
+    if (vts) vts.addEventListener("input", () => {
+      cardState.textScale = parseFloat(vts.value) / 100;
+      const ps = view.querySelector('.frange[data-key="textScale"]'); if (ps) ps.value = vts.value;
+      const pv = document.getElementById("v_textScale"); if (pv) pv.textContent = vts.value;
+      drawCard();
+    });
+    // مؤشّر الألوان العمودي
+    view.querySelectorAll("#colorRail .vsw[data-col]").forEach(b => b.addEventListener("click", () => {
+      cardState.textColor = b.dataset.col;
+      view.querySelectorAll("#colorRail .vsw").forEach(x => x.classList.toggle("active", x === b));
+      view.querySelectorAll("#textColors .swatch").forEach(x => x.classList.toggle("active", (x.dataset.col || "") === b.dataset.col));
+      drawCard();
+    }));
+    const vpick = view.querySelector("#vColorPick");
+    if (vpick) vpick.addEventListener("input", () => {
+      cardState.textColor = vpick.value;
+      view.querySelectorAll("#colorRail .vsw").forEach(x => x.classList.remove("active"));
+      vpick.closest(".vsw").classList.add("active");
       drawCard();
     });
     // تحريك الصورة بالسحب داخل المعاينة
