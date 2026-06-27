@@ -708,7 +708,7 @@
   }
   function bindCanvasDrag() {
     const cv = view.querySelector("#cardCanvas"); if (!cv) return;
-    let dragging = false, lx = 0, ly = 0, mode = null;
+    const pts = new Map(); let mode = null, pinch = null, lx = 0, ly = 0;
     const toCanvas = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * cv.width, y: (e.clientY - r.top) / r.height * cv.height }; };
     const hitLayer = (p) => {
       const W = cv.width, H = cv.height;
@@ -719,30 +719,49 @@
       }
       return -1;
     };
+    const two = () => { const a = [...pts.values()]; return { dist: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), ang: Math.atan2(a[1].y - a[0].y, a[1].x - a[0].x) }; };
     cv.addEventListener("pointerdown", (e) => {
-      const hit = hitLayer(toCanvas(e));
-      if (hit >= 0) { if (cardState.sel !== hit) { cardState.sel = hit; renderLayersBox(); } mode = "layer"; }
-      else if (cardState.bgImage) mode = "bg";
-      else return;
-      dragging = true; lx = e.clientX; ly = e.clientY;
       try { cv.setPointerCapture(e.pointerId); } catch (err) {}
-      cv.classList.add("grabbing");
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 1) {
+        const hit = hitLayer(toCanvas(e));
+        if (hit >= 0) { if (cardState.sel !== hit) { cardState.sel = hit; renderLayersBox(); drawCard(); } mode = "layer"; }
+        else if (cardState.bgImage) mode = "bg"; else mode = null;
+        lx = e.clientX; ly = e.clientY; cv.classList.add("grabbing");
+      } else if (pts.size === 2) {
+        const t = two();
+        if (mode === "layer" && cardState.layers[cardState.sel]) { const L = cardState.layers[cardState.sel]; pinch = { d: t.dist, a: t.ang, s0: L.scale, r0: L.rot || 0 }; }
+        else if (cardState.bgImage) { mode = "bg"; pinch = { d: t.dist, a: t.ang, s0: cardState.img.zoom || 1, r0: 0 }; }
+      }
     });
     cv.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
-      const r = cv.getBoundingClientRect();
-      const dx = (e.clientX - lx) / r.width * cv.width, dy = (e.clientY - ly) / r.height * cv.height;
-      if (mode === "layer" && cardState.layers[cardState.sel]) {
-        cardState.layers[cardState.sel].cx += dx / cv.width;
-        cardState.layers[cardState.sel].cy += dy / cv.height;
-      } else if (mode === "bg") { cardState.img.ox += dx; cardState.img.oy += dy; }
-      lx = e.clientX; ly = e.clientY;
-      drawCard();
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size >= 2 && pinch) {
+        const t = two(), ratio = t.dist / pinch.d;
+        if (mode === "layer" && cardState.layers[cardState.sel]) {
+          const L = cardState.layers[cardState.sel];
+          L.scale = Math.min(1.6, Math.max(0.08, pinch.s0 * ratio));
+          L.rot = pinch.r0 + (t.ang - pinch.a);
+        } else if (mode === "bg") { cardState.img.zoom = Math.min(4, Math.max(0.3, pinch.s0 * ratio)); }
+        drawCard(); return;
+      }
+      if (pts.size === 1 && mode) {
+        const r = cv.getBoundingClientRect();
+        const dx = (e.clientX - lx) / r.width * cv.width, dy = (e.clientY - ly) / r.height * cv.height;
+        if (mode === "layer" && cardState.layers[cardState.sel]) { const L = cardState.layers[cardState.sel]; L.cx += dx / cv.width; L.cy += dy / cv.height; }
+        else if (mode === "bg") { cardState.img.ox += dx; cardState.img.oy += dy; }
+        lx = e.clientX; ly = e.clientY; drawCard();
+      }
     });
-    const end = () => { dragging = false; mode = null; cv.classList.remove("grabbing"); };
-    cv.addEventListener("pointerup", end);
-    cv.addEventListener("pointercancel", end);
-    cv.addEventListener("pointerleave", end);
+    const up = (e) => {
+      pts.delete(e.pointerId);
+      if (pts.size < 2) pinch = null;
+      if (pts.size === 1) { const p = [...pts.values()][0]; lx = p.x; ly = p.y; }
+      if (pts.size === 0) { mode = null; cv.classList.remove("grabbing"); renderLayersBox(); }
+    };
+    cv.addEventListener("pointerup", up);
+    cv.addEventListener("pointercancel", up);
   }
   function bindLibItems() {
     view.querySelectorAll(".lib-item").forEach(b => b.addEventListener("click", () => {
@@ -786,7 +805,7 @@
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        cardState.layers.push({ img: img, cx: 0.5, cy: 0.42, scale: 0.45, rot: 0 });
+        cardState.layers.push({ img: img, cx: 0.5, cy: 0.42, scale: 0.45, rot: 0, bright: 100, contrast: 100, sat: 100, cut: false, proc: null });
         cardState.sel = cardState.layers.length - 1;
         renderLayersBox(); drawCard();
         const pv = document.getElementById("cardPreview"); if (pv) pv.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -807,11 +826,18 @@
     if (cardState.sel >= 0 && cardState.sel < L.length) {
       const ly = L[cardState.sel];
       h += `<div class="layer-controls">
+        <p class="drag-hint">👆 اسحب الصورة لتحريكها · باصبعين كبّر/صغّر ودوّر مباشرةً على البطاقة</p>
         <div class="slider-box"><label>حجم الصورة <span>${Math.round(ly.scale * 100)}</span></label>
-          <input type="range" class="lrange" data-lk="scale" min="12" max="100" step="1" value="${Math.round(ly.scale * 100)}" /></div>
+          <input type="range" class="lrange" data-lk="scale" min="12" max="140" step="1" value="${Math.round(ly.scale * 100)}" /></div>
         <div class="slider-box"><label>تدوير <span>${Math.round((ly.rot || 0) * 180 / Math.PI)}°</span></label>
           <input type="range" class="lrange" data-lk="rot" min="-180" max="180" step="1" value="${Math.round((ly.rot || 0) * 180 / Math.PI)}" /></div>
-        <p class="drag-hint">👆 اسحب الصورة على البطاقة لتحريكها</p>
+        <div class="slider-box"><label>السطوع <span>${ly.bright || 100}</span></label>
+          <input type="range" class="lrange" data-lk="bright" min="50" max="150" step="1" value="${ly.bright || 100}" /></div>
+        <div class="slider-box"><label>التباين <span>${ly.contrast || 100}</span></label>
+          <input type="range" class="lrange" data-lk="contrast" min="50" max="160" step="1" value="${ly.contrast || 100}" /></div>
+        <div class="slider-box"><label>التشبّع <span>${ly.sat == null ? 100 : ly.sat}</span></label>
+          <input type="range" class="lrange" data-lk="sat" min="0" max="200" step="1" value="${ly.sat == null ? 100 : ly.sat}" /></div>
+        <button class="act full" id="cutLayer">${ly.cut ? "↩ استعادة الخلفية" : "🪄 إزالة الخلفية (للخلفيات السادة)"}</button>
         <button class="act full" id="delLayer">🗑 حذف الصورة المحدّدة</button>
       </div>`;
     }
@@ -819,11 +845,19 @@
     box.querySelectorAll(".layer-chip").forEach(b => b.addEventListener("click", () => { cardState.sel = parseInt(b.dataset.ly, 10); renderLayersBox(); drawCard(); }));
     box.querySelectorAll(".lrange").forEach(inp => inp.addEventListener("input", () => {
       const ly = cardState.layers[cardState.sel]; if (!ly) return;
-      const v = parseFloat(inp.value);
-      if (inp.dataset.lk === "scale") ly.scale = v / 100; else ly.rot = v * Math.PI / 180;
-      inp.parentElement.querySelector("span").textContent = inp.dataset.lk === "rot" ? Math.round(v) + "°" : Math.round(v);
+      const v = parseFloat(inp.value), k = inp.dataset.lk;
+      if (k === "scale") ly.scale = v / 100;
+      else if (k === "rot") ly.rot = v * Math.PI / 180;
+      else ly[k] = v; // bright / contrast / sat
+      inp.parentElement.querySelector("span").textContent = k === "rot" ? Math.round(v) + "°" : Math.round(v);
       drawCard();
     }));
+    const cut = document.getElementById("cutLayer");
+    if (cut) cut.addEventListener("click", () => {
+      const ly = cardState.layers[cardState.sel]; if (!ly) return;
+      if (ly.cut) { ly.cut = false; drawCard(); }
+      else { cut.textContent = "… جارٍ الإزالة"; setTimeout(() => { removeLayerBg(ly); renderLayersBox(); }, 30); }
+    });
     const del = document.getElementById("delLayer");
     if (del) del.addEventListener("click", () => { cardState.layers.splice(cardState.sel, 1); cardState.sel = cardState.layers.length ? 0 : -1; renderLayersBox(); drawCard(); });
   }
@@ -871,26 +905,48 @@
       if (!L.img || !L.img.complete) return;
       const w = W * (L.scale || 0.45), h = w * (L.img.height / L.img.width);
       const cx = W * (L.cx != null ? L.cx : 0.5), cy = H * (L.cy != null ? L.cy : 0.5);
-      const rr = w * 0.035;
+      const rr = w * 0.035, cut = !!(L.cut && L.proc), src = cut ? L.proc : L.img;
       ctx.save();
       ctx.translate(cx, cy); ctx.rotate(L.rot || 0);
-      // ظلّ خفيف فقط (بلا إطار أبيض عريض)
+      if (!cut) { // ظلّ + حافة فقط للصورة المستطيلة (لا للمقصوصة)
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,0.32)"; ctx.shadowBlur = w * 0.045; ctx.shadowOffsetY = w * 0.012;
+        ctx.fillStyle = "#000"; roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.fill();
+        ctx.restore();
+      }
       ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.32)"; ctx.shadowBlur = w * 0.045; ctx.shadowOffsetY = w * 0.012;
-      ctx.fillStyle = "#000"; roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.fill();
-      ctx.restore();
-      // الصورة بزوايا دائرية
-      ctx.save(); roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.clip();
-      ctx.drawImage(L.img, -w / 2, -h / 2, w, h); ctx.restore();
-      // خطّ أبيض رفيع جدًا لفصلها عن الخلفية
-      ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = Math.max(1, w * 0.005);
-      roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.stroke();
-      if (cardState.sel === i) { // إطار اختيار
+      if (!cut) { roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.clip(); }
+      ctx.filter = `brightness(${L.bright || 100}%) contrast(${L.contrast || 100}%) saturate(${L.sat == null ? 100 : L.sat}%)`;
+      ctx.drawImage(src, -w / 2, -h / 2, w, h); ctx.restore();
+      if (!cut) {
+        ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = Math.max(1, w * 0.005);
+        roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.stroke();
+      }
+      if (cardState.sel === i) {
         ctx.strokeStyle = "#c8a24a"; ctx.lineWidth = Math.max(2, w * 0.011); ctx.setLineDash([w * 0.04, w * 0.03]);
         roundRect(ctx, -w / 2, -h / 2, w, h, rr); ctx.stroke(); ctx.setLineDash([]);
       }
       ctx.restore();
     });
+  }
+  // إزالة الخلفية السادة (تقريبية — تعمل أفضل مع خلفية موحّدة اللون)
+  function removeLayerBg(L) {
+    const img = L.img; const mx = 800, sc = Math.min(1, mx / Math.max(img.width, img.height));
+    const c = document.createElement("canvas"); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+    const x = c.getContext("2d"); x.drawImage(img, 0, 0, c.width, c.height);
+    let d; try { d = x.getImageData(0, 0, c.width, c.height); } catch (e) { toast("تعذّرت معالجة الصورة"); return; }
+    const px = d.data, W = c.width, H = c.height;
+    const corner = (cx, cy) => { const k = (cy * W + cx) * 4; return [px[k], px[k + 1], px[k + 2]]; };
+    const cs = [corner(0, 0), corner(W - 1, 0), corner(0, H - 1), corner(W - 1, H - 1)];
+    const tol = 50;
+    for (let i = 0; i < px.length; i += 4) {
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      for (let j = 0; j < cs.length; j++) {
+        if (Math.abs(r - cs[j][0]) < tol && Math.abs(g - cs[j][1]) < tol && Math.abs(b - cs[j][2]) < tol) { px[i + 3] = 0; break; }
+      }
+    }
+    x.putImageData(d, 0, 0);
+    L.proc = c; L.cut = true; drawCard();
   }
 
   const STATIC_ANIM = { bgZoom: 1, textAlpha: 1, textDy: 0, uiAlpha: 1 };
