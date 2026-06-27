@@ -578,3 +578,15 @@ img, canvas, video { max-width: 100%; }
 
 /* فصل مقدّمة التلاوة (البسملة) في سطر مستقلّ ضمن نصّ الذكر */
 .dhikr-text { white-space: pre-line; }
+
+/* ===== عارض القراءة والتفسير ===== */
+.sr-read { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 1rem; }
+.sr-read:active { transform: scale(.92); }
+.ayah-card { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow); }
+.ayah-text { font-family: "Amiri Quran", "Amiri", serif; font-size: 1.5rem; line-height: 2.5; color: var(--text); text-align: justify; }
+.ayah-no { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; font-family: "Tajawal"; font-size: .62rem; font-weight: 700; color: var(--primary); border: 1.5px solid var(--accent); border-radius: 50%; vertical-align: middle; margin: 0 2px; }
+[data-theme="dark"] .ayah-no { color: var(--accent); }
+.tafseer { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.tafseer > summary { cursor: pointer; font-family: "Tajawal"; font-weight: 700; color: var(--accent); font-size: .9rem; list-style: none; }
+.tafseer > summary::-webkit-details-marker { display: none; }
+.tafseer-body { margin-top: 8px; font-family: "Tajawal"; font-size: .95rem; line-height: 1.95; color: var(--text-muted); }

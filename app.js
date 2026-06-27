@@ -1260,15 +1260,42 @@
       return `<div class="surah-row ${cur ? "active" : ""}" data-i="${i}">
         <span class="sr-num">${num}</span>
         <span class="sr-name">${cur ? "🔊 " : ""}${name}</span>
+        <button class="sr-read" data-read="${num}" title="قراءة وتفسير">📖</button>
         <button class="sr-dl ${dl ? "done" : ""}" data-dl="${i}" title="${dl ? "محمّلة — اضغط للحذف" : "تحميل"}">${dl ? "✓" : "⬇️"}</button>
       </div>`;
     }).join("");
     box.querySelectorAll(".surah-row").forEach(r => r.addEventListener("click", (e) => {
-      if (e.target.closest(".sr-dl")) return; playSurah(parseInt(r.dataset.i, 10));
+      if (e.target.closest(".sr-dl") || e.target.closest(".sr-read")) return; playSurah(parseInt(r.dataset.i, 10));
     }));
     box.querySelectorAll(".sr-dl").forEach(b => b.addEventListener("click", (e) => {
       e.stopPropagation(); toggleDownload(parseInt(b.dataset.dl, 10), b);
     }));
+    box.querySelectorAll(".sr-read").forEach(b => b.addEventListener("click", (e) => {
+      e.stopPropagation(); renderSurahRead(parseInt(b.dataset.read, 10), SURAHS[parseInt(b.dataset.read, 10) - 1]);
+    }));
+  }
+
+  // عارض القراءة والتفسير الميسّر (المصدر الرسمي — مجمع الملك فهد)
+  let TAFSEER = null;
+  async function loadTafseer() {
+    if (TAFSEER) return TAFSEER;
+    const r = await fetch("data/tafseer.json"); TAFSEER = await r.json(); return TAFSEER;
+  }
+  async function renderSurahRead(num, name) {
+    appTitle.textContent = "سورة " + name;
+    backBtn.classList.remove("hidden"); goBack = renderQuran;
+    view.innerHTML = `<div class="cat-head"><h2>سورة ${name}</h2><p>القراءة والتفسير الميسّر — مجمع الملك فهد</p></div><div class="loading">جارٍ تحميل التفسير…</div>`;
+    let T; try { T = await loadTafseer(); } catch (e) { view.querySelector(".loading").textContent = "تعذّر تحميل التفسير — تحقّق من الاتصال أول مرة."; return; }
+    let html = "";
+    for (let a = 1; a <= 286; a++) {
+      const e = T[num + ":" + a]; if (!e) { if (a > 7) break; else continue; }
+      html += `<div class="ayah-card">
+        <div class="ayah-text">${e.t} <span class="ayah-no">${a}</span></div>
+        <details class="tafseer"><summary>📖 التفسير الميسّر</summary><div class="tafseer-body">${esc(e.f)}</div></details>
+      </div>`;
+    }
+    view.innerHTML = `<div class="cat-head"><h2>سورة ${name}</h2><p>القراءة والتفسير الميسّر — مجمع الملك فهد</p></div>${html}`;
+    window.scrollTo(0, 0);
   }
 
   async function playSurah(i) {
