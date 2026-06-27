@@ -339,19 +339,30 @@
   };
   const FRAMES = [
     { k: "double", n: "مزدوج" }, { k: "simple", n: "بسيط" }, { k: "corners", n: "زوايا" },
-    { k: "dashed", n: "متقطّع" }, { k: "ornate", n: "مزخرف" }, { k: "none", n: "بدون" }
+    { k: "dashed", n: "متقطّع" }, { k: "ornate", n: "مزخرف" },
+    { k: "thick", n: "عريض" }, { k: "beaded", n: "لؤلؤي" }, { k: "deco", n: "آرت ديكو" },
+    { k: "inner", n: "غائر" }, { k: "ribbon", n: "شريطي" }, { k: "none", n: "بدون" }
   ];
   const PATTERNS = [
     { k: "", n: "تلقائي" }, { k: "none", n: "بدون" }, { k: "dots", n: "نقاط" }, { k: "stars", n: "نجوم" },
-    { k: "rays", n: "أشعة" }, { k: "diamonds", n: "معيّنات" }, { k: "grid", n: "شبكة" }
+    { k: "rays", n: "أشعة" }, { k: "diamonds", n: "معيّنات" }, { k: "grid", n: "شبكة" },
+    { k: "girih", n: "نجوم هندسية" }, { k: "scales", n: "حراشف" }, { k: "waves", n: "أمواج" },
+    { k: "chevron", n: "متعرّج" }, { k: "arabesque", n: "أرابيسك" }
   ];
   const BACKGROUNDS = [
     { k: "", n: "بدون" }, { k: "mosque", n: "🕌 مسجد" }, { k: "dome", n: "قبة" }, { k: "night", n: "🌙 ليل ونجوم" },
     { k: "arch", n: "محراب" }, { k: "lantern", n: "🏮 فوانيس" }, { k: "girih", n: "زخرفة هندسية" },
     { k: "rays", n: "✨ نور" }, { k: "bokeh", n: "تلألؤ" }
   ];
-  const TEXT_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#ffd97d", "#f5c6d6", "#bfe8ee", "#1c2625", "#0c1716"];
-  const RAIL_COLORS = ["#ffffff", "#f7e9c2", "#e6cf95", "#f5c6d6", "#bfe8ee", "#0c1716"];
+  const TEXT_COLORS = ["gold", "#ffffff", "#f7e9c2", "#e6cf95", "#ffd97d", "#f5c6d6", "#bfe8ee", "#1c2625", "#0c1716"];
+  const RAIL_COLORS = ["gold", "#ffffff", "#e6cf95", "#f5c6d6", "#bfe8ee", "#0c1716"];
+  const GOLD_GRAD = "linear-gradient(135deg,#f9df8c 0%,#fff3c4 22%,#d4af37 52%,#f7e69b 74%,#b8860b 100%)";
+  function swatchBg(c) { return c === "gold" ? GOLD_GRAD : c; }
+  function goldFill(ctx, top, bot) {
+    const g = ctx.createLinearGradient(0, top, 0, bot);
+    g.addColorStop(0, "#f9df8c"); g.addColorStop(0.25, "#fff3c4"); g.addColorStop(0.5, "#d4af37");
+    g.addColorStop(0.75, "#f7e69b"); g.addColorStop(1, "#b8860b"); return g;
+  }
   function filterString(f) {
     return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) sepia(${f.sepia}%) blur(${f.blur}px)`;
   }
@@ -394,7 +405,7 @@
               <span class="rail-end">أ</span>
               <div class="rail-sep"></div>
               <button class="vsw reset ${cardState.textColor ? "" : "active"}" data-col="" title="افتراضي">↺</button>
-              ${RAIL_COLORS.slice(0, 4).map(c => `<button class="vsw ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${c}" title="لون"></button>`).join("")}
+              ${RAIL_COLORS.slice(0, 4).map(c => `<button class="vsw ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${swatchBg(c)}" title="${c === "gold" ? "ذهبي معدني" : "لون"}"></button>`).join("")}
               <label class="vsw pick" title="لون مخصّص"><input type="color" id="vColorPick" value="#ffffff" /></label>
             </div>
           </div>
@@ -443,7 +454,7 @@
               <div class="mini-label">لون النص</div>
               <div class="swatch-row" id="textColors">
                 <button class="swatch reset ${cardState.textColor ? "" : "active"}" data-col="" title="افتراضي">↺</button>
-                ${TEXT_COLORS.map(c => `<button class="swatch ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${c}"></button>`).join("")}
+                ${TEXT_COLORS.map(c => `<button class="swatch ${cardState.textColor === c ? "active" : ""}" data-col="${c}" style="background:${swatchBg(c)}" title="${c === "gold" ? "ذهبي معدني" : ""}"></button>`).join("")}
                 <label class="swatch pick" title="لون مخصّص"><input type="color" id="textColorPick" value="#ffffff" />🎨</label>
               </div>
             </div>
@@ -823,8 +834,12 @@
     lines = wrapLines(ctx, cardState.text, maxW);
     ctx.globalAlpha = anim.textAlpha;
     if (hasImg) { ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = u * 0.022; ctx.shadowOffsetY = u * 0.004; }
-    ctx.fillStyle = cardState.textColor || fg;
     const lh = size * 1.75, startY = (areaTop + areaBot) / 2 - ((lines.length - 1) * lh) / 2 + (anim.textDy || 0);
+    if (cardState.textColor === "gold") {
+      ctx.fillStyle = goldFill(ctx, startY - lh * 0.7, startY + (lines.length - 1) * lh + lh * 0.7);
+    } else {
+      ctx.fillStyle = cardState.textColor || fg;
+    }
     lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lh));
     ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
     ctx.globalAlpha = 1;
@@ -884,6 +899,32 @@
     } else if (key === "frame") {
       ctx.strokeStyle = hexA(th.accent, 0.18); ctx.lineWidth = 1.5;
       for (let i = 0; i < 3; i++) { const o = u * 0.085 + i * u * 0.009; roundRect(ctx, o, o, W - 2 * o, H - 2 * o, u * 0.016); ctx.stroke(); }
+    } else if (key === "girih") {
+      const step = u * 0.18;
+      for (let y = step * 0.55; y < H; y += step) for (let x = step * 0.55; x < W; x += step) girihStar(ctx, x, y, step * 0.36, hexA(th.accent, 0.10));
+    } else if (key === "scales") {
+      ctx.strokeStyle = hexA(th.accent, 0.08); ctx.lineWidth = Math.max(1, u * 0.0016);
+      const R = u * 0.05;
+      for (let row = 0, y = u * 0.06; y < H + R; y += R, row++) {
+        const off = (row % 2) ? R : 0;
+        for (let x = -R + off; x < W + R; x += R * 2) { ctx.beginPath(); ctx.arc(x, y, R, 0.16 * Math.PI, 0.84 * Math.PI); ctx.stroke(); }
+      }
+    } else if (key === "waves") {
+      ctx.strokeStyle = hexA(th.accent, 0.07); ctx.lineWidth = Math.max(1, u * 0.002);
+      const amp = u * 0.018, wl = u * 0.13, step = u * 0.066;
+      for (let y = u * 0.08; y < H - u * 0.05; y += step) { ctx.beginPath(); for (let x = 0; x <= W; x += 5) { const yy = y + Math.sin((x / wl) * 6.2832) * amp; x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy); } ctx.stroke(); }
+    } else if (key === "chevron") {
+      ctx.strokeStyle = hexA(th.accent, 0.06); ctx.lineWidth = Math.max(1.2, u * 0.0024);
+      const w = u * 0.06, h = u * 0.03, step = u * 0.08;
+      for (let y = u * 0.05; y < H + h; y += step) { ctx.beginPath(); for (let x = 0, k = 0; x <= W; x += w, k++) ctx.lineTo(x, y + (k % 2 ? h : 0)); ctx.stroke(); }
+    } else if (key === "arabesque") {
+      ctx.strokeStyle = hexA(th.accent, 0.08); ctx.lineWidth = Math.max(1, u * 0.0017);
+      const s = u * 0.13;
+      for (let y = s * 0.5; y < H; y += s) for (let x = s * 0.5; x < W; x += s) {
+        ctx.beginPath(); ctx.arc(x, y, s * 0.5, Math.PI, 1.5 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x + s, y, s * 0.5, Math.PI, 1.5 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x + s * 0.5, y, s * 0.5, 0.5 * Math.PI, Math.PI); ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -998,6 +1039,47 @@
     if (style === "dashed") {
       ctx.setLineDash([u * 0.02, u * 0.013]);
       roundRect(ctx, fm, fm, W - 2 * fm, H - 2 * fm, r); ctx.stroke();
+      ctx.restore(); return;
+    }
+    if (style === "thick") {
+      ctx.lineWidth = Math.max(4, u * 0.012);
+      roundRect(ctx, fm, fm, W - 2 * fm, H - 2 * fm, r); ctx.stroke();
+      ctx.strokeStyle = hexA(accent, 0.9); ctx.lineWidth = Math.max(1, u * 0.0015);
+      const o = fm * 1.7; roundRect(ctx, o, o, W - 2 * o, H - 2 * o, u * 0.02); ctx.stroke();
+      ctx.restore(); return;
+    }
+    if (style === "beaded") {
+      roundRect(ctx, fm, fm, W - 2 * fm, H - 2 * fm, r); ctx.stroke();
+      ctx.fillStyle = hexA(accent, 0.8);
+      const o = fm * 1.6, x0 = o, y0 = o, x1 = W - o, y1 = H - o, step = u * 0.028, br = Math.max(1, u * 0.0034);
+      for (let x = x0; x <= x1 + 1; x += step) { ctx.beginPath(); ctx.arc(x, y0, br, 0, 6.2832); ctx.fill(); ctx.beginPath(); ctx.arc(x, y1, br, 0, 6.2832); ctx.fill(); }
+      for (let y = y0; y <= y1 + 1; y += step) { ctx.beginPath(); ctx.arc(x0, y, br, 0, 6.2832); ctx.fill(); ctx.beginPath(); ctx.arc(x1, y, br, 0, 6.2832); ctx.fill(); }
+      ctx.restore(); return;
+    }
+    if (style === "inner") {
+      roundRect(ctx, fm, fm, W - 2 * fm, H - 2 * fm, r); ctx.stroke();
+      ctx.strokeStyle = hexA(accent, 0.3); ctx.lineWidth = Math.max(1, u * 0.0016);
+      const o = fm * 2.1; roundRect(ctx, o, o, W - 2 * o, H - 2 * o, u * 0.016); ctx.stroke();
+      ctx.fillStyle = accent; const d = u * 0.009;
+      [[W / 2, o], [W / 2, H - o], [o, H / 2], [W - o, H / 2]].forEach(([x, y]) => { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-d / 2, -d / 2, d, d); ctx.restore(); });
+      ctx.restore(); return;
+    }
+    if (style === "deco") {
+      roundRect(ctx, fm, fm, W - 2 * fm, H - 2 * fm, r); ctx.stroke();
+      const m = fm * 1.05, L = u * 0.062; ctx.lineWidth = Math.max(2.5, u * 0.004);
+      [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]].forEach(([x, y, sx, sy]) => {
+        ctx.beginPath(); ctx.moveTo(x + L * sx, y); ctx.lineTo(x, y); ctx.lineTo(x, y + L * sy); ctx.stroke();
+        ctx.fillStyle = accent; ctx.save(); ctx.translate(x + L * 0.5 * sx, y + L * 0.5 * sy); ctx.rotate(Math.PI / 4); const d = u * 0.011; ctx.fillRect(-d / 2, -d / 2, d, d); ctx.restore();
+      });
+      ctx.restore(); return;
+    }
+    if (style === "ribbon") {
+      const o = fm * 1.4;
+      roundRect(ctx, o, o, W - 2 * o, H - 2 * o, u * 0.02); ctx.stroke();
+      ctx.fillStyle = accent;
+      [[W / 2, o], [W / 2, H - o]].forEach(([x, y]) => {
+        ctx.beginPath(); ctx.moveTo(x - u * 0.05, y); ctx.lineTo(x, y - u * 0.018); ctx.lineTo(x + u * 0.05, y); ctx.lineTo(x, y + u * 0.018); ctx.closePath(); ctx.fill();
+      });
       ctx.restore(); return;
     }
     // simple / double / ornate يشتركون في الإطار الخارجي
