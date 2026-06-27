@@ -241,7 +241,7 @@
       const remaining = getRemaining(cat.id, idx, item.count);
       const done = remaining === 0;
       html += `<div class="dhikr-card ${done ? "done" : ""}" data-idx="${idx}">
-          <div class="dhikr-text">${item.text}</div>
+          <div class="dhikr-text ${isQuranSrc(item.source) ? "quran" : ""}">${item.text}</div>
           <div class="dhikr-meta"><span class="badge">التكرار: ${item.count}</span><span class="badge virtue">${esc(item.virtue)}</span></div>
           <div class="dhikr-bottom"><span class="source">${esc(item.source)}</span>
             <button class="counter ${done ? "complete" : ""}" data-idx="${idx}">

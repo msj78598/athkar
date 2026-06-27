@@ -590,3 +590,12 @@ img, canvas, video { max-width: 100%; }
 .tafseer > summary { cursor: pointer; font-family: "Tajawal"; font-weight: 700; color: var(--accent); font-size: .9rem; list-style: none; }
 .tafseer > summary::-webkit-details-marker { display: none; }
 .tafseer-body { margin-top: 8px; font-family: "Tajawal"; font-size: .95rem; line-height: 1.95; color: var(--text-muted); }
+
+/* ===== خط المصحف العثماني الرسمي (مجمع الملك فهد) ===== */
+@font-face {
+  font-family: "UthmanicHafs";
+  src: url("fonts/uthmanic_hafs.ttf") format("truetype");
+  font-display: swap;
+}
+.ayah-text { font-family: "UthmanicHafs", "Amiri Quran", serif; line-height: 2.6; }
+.dhikr-text.quran { font-family: "UthmanicHafs", "Amiri Quran", serif; line-height: 2.7; }
