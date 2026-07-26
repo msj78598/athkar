@@ -1860,16 +1860,22 @@
     flush();
     const nav = `<div class="mushaf-nav">
       <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""}>◀ السابقة</button>
-      <button class="act" id="pgMark">🔖 علّم موضعي</button>
+      <button class="act" id="pgMark">🔖 علّم</button>
       <button class="act" id="pgNext" ${p >= 604 ? "disabled" : ""}>التالية ▶</button>
     </div>
-    <button class="act primary full" id="pgShare">📤 شارك هذه الصفحة (واتساب)</button>
-    <button class="act full" id="pgShareJuz">📑 شارك الجزء ${juz} كاملًا</button>`;
-    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} ﴾</h2><p>اضغط أيّ آية لعرض تفسيرها الميسّر</p></div>${out}${nav}`;
+    <button class="act primary full" id="pgShareImg">🖼️ شارك صورة الصفحة (واتساب)</button>
+    <button class="act full" id="pgPdf">📄 حمّل/شارك الجزء ${juz} ملفَّ PDF</button>
+    <div class="mushaf-nav">
+      <button class="act" id="pgShare">🔗 رابط الصفحة</button>
+      <button class="act" id="pgShareJuz">🔗 رابط الجزء</button>
+    </div>`;
+    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} ﴾</h2><p>اضغط أيّ آية لعرض تفسيرها الميسّر · شارك الصفحة صورةً أو الجزء PDF</p></div>${out}${nav}`;
     view.querySelectorAll(".aya").forEach(el => el.addEventListener("click", () => showAyahTafseer(+el.dataset.s, +el.dataset.a)));
     const pv = document.getElementById("pgPrev"); if (pv) pv.addEventListener("click", () => renderMushafPage(p - 1));
     const nx = document.getElementById("pgNext"); if (nx) nx.addEventListener("click", () => renderMushafPage(p + 1));
     const mk = document.getElementById("pgMark"); if (mk) mk.addEventListener("click", () => { const f = refs[0] || [1, 1]; saveQuranLast(f[0], f[1]); toast("حُفظ موضع القراءة (صفحة " + p + ") 🔖"); });
+    const si = document.getElementById("pgShareImg"); if (si) si.addEventListener("click", () => sharePageImage(p, juz));
+    const pd = document.getElementById("pgPdf"); if (pd) pd.addEventListener("click", () => shareJuzPDF(juz));
     const sh = document.getElementById("pgShare"); if (sh) sh.addEventListener("click", () => shareQuran(`📖 وِرد من القرآن الكريم — صفحة ${p} (الجزء ${juz})\nاقرأها معنا، ولنا وللدالّ على الخير الأجر 🤲`, "https://" + SITE + "/?p=" + p));
     const shj = document.getElementById("pgShareJuz"); if (shj) shj.addEventListener("click", () => shareQuran(`📑 وِرد اليوم: الجزء ${juz} من القرآن الكريم\nلنقرأه معًا في ختمتنا 🤲`, "https://" + SITE + "/?juz=" + juz));
     if (anchor) { const t = document.getElementById(`aya-${anchor.s}-${anchor.a}`); if (t) { t.scrollIntoView({ block: "center" }); t.classList.add("flash"); } else window.scrollTo(0, 0); }
@@ -1887,6 +1893,84 @@
     m.classList.add("show");
     m.onclick = (ev) => { if (ev.target === m || ev.target.closest(".am-close")) m.classList.remove("show"); };
     const bm = m.querySelector("#amBookmark"); if (bm) bm.addEventListener("click", () => { saveQuranLast(s, a); m.classList.remove("show"); toast("حُفظ موضع القراءة 🔖"); });
+  }
+  // ===== توليد صورة صفحة المصحف ومشاركة الجزء PDF =====
+  let _jspdfP = null;
+  function ensureJsPDF() {
+    if (window.jspdf) return Promise.resolve();
+    if (_jspdfP) return _jspdfP;
+    _jspdfP = new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "vendor/jspdf.umd.min.js"; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+    return _jspdfP;
+  }
+  async function renderPageCanvas(p) {
+    await loadPages(); const T = await loadTafseer();
+    if (document.fonts && document.fonts.load) { try { await Promise.all([document.fonts.load("40px 'UthmanicHafs'"), document.fonts.load("700 34px 'Tajawal'")]); } catch (e) {} }
+    const refs = PAGES[p] || [], juz = refs.length ? juzOfAyah(refs[0][0], refs[0][1]) : 1;
+    const W = 900, pad = 66, contentW = W - pad * 2, FS = 40, LH = Math.round(FS * 2.15);
+    const meas = document.createElement("canvas").getContext("2d");
+    meas.font = `${FS}px 'UthmanicHafs','Amiri Quran',serif`;
+    let blocks = [], curS = -1, buf = "";
+    const flush = () => { if (buf.trim()) wrapLines(meas, buf.trim(), contentW).forEach(l => blocks.push({ t: "line", v: l })); buf = ""; };
+    refs.forEach(r => { const s = r[0], a = r[1], e = T[s + ":" + a]; if (!e) return; if (s !== curS) { flush(); curS = s; blocks.push({ t: "sura", v: SURAHS[s - 1] }); if (a === 1 && s !== 1 && s !== 9) blocks.push({ t: "bism" }); } buf += e.t + " ۝" + toArabicNum(a) + " "; });
+    flush();
+    const headH = 150, footH = 86;
+    let bodyH = 0; blocks.forEach(b => bodyH += b.t === "sura" ? LH * 1.25 : b.t === "bism" ? LH * 1.1 : LH);
+    const H = Math.max(760, Math.round(headH + bodyH + footH + pad));
+    const c = document.createElement("canvas"); c.width = W; c.height = H; const ctx = c.getContext("2d");
+    ctx.fillStyle = "#f6efe0"; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 5; roundRect(ctx, 24, 24, W - 48, H - 48, 18); ctx.stroke();
+    ctx.strokeStyle = "#c8a24a"; ctx.lineWidth = 2; roundRect(ctx, 38, 38, W - 76, H - 76, 12); ctx.stroke();
+    ctx.fillStyle = "#0f3d3e"; roundRect(ctx, 46, 46, W - 92, 84, 10); ctx.fill();
+    ctx.textAlign = "center"; ctx.direction = "rtl";
+    ctx.fillStyle = "#e6cf95"; ctx.font = "700 34px 'Tajawal',sans-serif";
+    ctx.fillText(`﴿ الجزء ${juz} · صفحة ${p} ﴾`, W / 2, 100);
+    let y = headH + 34;
+    blocks.forEach(b => {
+      if (b.t === "sura") { ctx.textAlign = "center"; ctx.fillStyle = "#7a1f1f"; ctx.font = "700 34px 'Tajawal',sans-serif"; ctx.fillText("سورة " + b.v, W / 2, y + FS * 0.55); y += LH * 1.25; }
+      else if (b.t === "bism") { ctx.textAlign = "center"; ctx.fillStyle = "#1c2625"; ctx.font = "40px 'UthmanicHafs','Amiri Quran',serif"; ctx.fillText("بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ", W / 2, y + FS * 0.55); y += LH * 1.1; }
+      else { ctx.textAlign = "right"; ctx.fillStyle = "#1c2625"; ctx.font = `${FS}px 'UthmanicHafs','Amiri Quran',serif`; ctx.fillText(b.v, W - pad, y + FS * 0.55); y += LH; }
+    });
+    ctx.textAlign = "center"; ctx.fillStyle = "#0f3d3e"; ctx.font = "700 25px 'Tajawal',sans-serif";
+    ctx.fillText("📿 أذكار — athkar.vercel.app", W / 2, H - 48);
+    return c;
+  }
+  async function sharePageImage(p, juz) {
+    toast("جارٍ تجهيز صورة الصفحة…");
+    let c; try { c = await renderPageCanvas(p); } catch (e) { toast("تعذّر التجهيز — تحقّق من الاتصال أول مرة"); return; }
+    c.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], `مصحف-صفحة-${p}.png`, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], text: `📖 وِرد اليوم — صفحة ${p} (الجزء ${juz}) من القرآن الكريم` }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+      }
+      const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `مصحف-صفحة-${p}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, "image/png");
+  }
+  async function shareJuzPDF(juz) {
+    await loadPages();
+    const st = JUZ_STARTS[juz - 1], startP = A2P[st[0] + ":" + st[1]];
+    let lastP;
+    if (juz < 30) { const nx = JUZ_STARTS[juz], nxP = A2P[nx[0] + ":" + nx[1]], fr = (PAGES[nxP] || [])[0]; lastP = (fr && fr[0] === nx[0] && fr[1] === nx[1]) ? nxP - 1 : nxP; }
+    else lastP = 604;
+    const total = lastP - startP + 1;
+    toast(`جارٍ تجهيز ملف PDF للجزء ${juz} (${total} صفحة)… انتظر لحظات`);
+    try { await ensureJsPDF(); } catch (e) { toast("تعذّر تحميل مولّد PDF — تحقّق من الاتصال"); return; }
+    const JS = window.jspdf.jsPDF; let pdf = null;
+    for (let p = startP; p <= lastP; p++) {
+      let c; try { c = await renderPageCanvas(p); } catch (e) { continue; }
+      const w = c.width, h = c.height;
+      if (!pdf) pdf = new JS({ unit: "px", format: [w, h], compress: true });
+      else pdf.addPage([w, h]);
+      pdf.addImage(c.toDataURL("image/jpeg", 0.82), "JPEG", 0, 0, w, h);
+      await new Promise(r => setTimeout(r, 0));
+    }
+    if (!pdf) { toast("تعذّر التجهيز"); return; }
+    const blob = pdf.output("blob");
+    const file = new File([blob], `الجزء-${juz}.pdf`, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: `📑 الجزء ${juz} من القرآن الكريم — وِرد اليوم 🤲` }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `الجزء-${juz}.pdf`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 8000);
   }
   // الختمة
   function khatmah() { try { return JSON.parse(localStorage.getItem("khatmah") || "null"); } catch (e) { return null; } }
