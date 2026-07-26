@@ -1844,6 +1844,15 @@
   async function openJuz(n) { await loadPages(); const st = JUZ_STARTS[n - 1]; renderMushafPage(A2P[st[0] + ":" + st[1]] || 1); }
   function mushafImg(p) { return "mushaf/page" + String(p).padStart(3, "0") + ".png"; }
   function loadImg(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
+  // صور المصدر: حبر أسود على خلفية شفّافة — نُسطّحها على ورق كريمي معتم لتظهر صحيحةً عند الحفظ/المشاركة/PDF
+  async function flattenPage(p) {
+    const im = await loadImg(mushafImg(p));
+    const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const x = c.getContext("2d");
+    x.fillStyle = "#fbf7ec"; x.fillRect(0, 0, c.width, c.height);
+    x.drawImage(im, 0, 0);
+    return c;
+  }
   async function renderMushafPage(p, anchor) {
     p = Math.max(1, Math.min(604, p));
     await loadPages();
@@ -1966,14 +1975,15 @@
   }
   async function sharePageImage(p, juz) {
     toast("جارٍ تجهيز صورة الصفحة…");
-    try {
-      const r = await fetch(mushafImg(p)); const blob = await r.blob();
+    let c; try { c = await flattenPage(p); } catch (e) { toast("تعذّر تجهيز الصورة"); return; }
+    c.toBlob(async (blob) => {
+      if (!blob) return;
       const file = new File([blob], `مصحف-صفحة-${p}.png`, { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try { await navigator.share({ files: [file], text: `📖 صفحة ${p} (الجزء ${juz}) من مصحف المدينة النبوية 🤲` }); return; } catch (e) { if (e && e.name === "AbortError") return; }
       }
       const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `مصحف-صفحة-${p}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
-    } catch (e) { toast("تعذّر تجهيز الصورة"); }
+    }, "image/png");
   }
   function juzLastPage(juz) {
     if (juz >= 30) return 604;
@@ -1988,11 +1998,11 @@
     try { await ensureJsPDF(); } catch (e) { toast("تعذّر تحميل مولّد PDF — تحقّق من الاتصال"); return; }
     const JS = window.jspdf.jsPDF; let pdf = null;
     for (let p = startP; p <= lastP; p++) {
-      let im; try { im = await loadImg(mushafImg(p)); } catch (e) { continue; }
-      const w = im.naturalWidth, h = im.naturalHeight;
+      let c; try { c = await flattenPage(p); } catch (e) { continue; }
+      const w = c.width, h = c.height;
       if (!pdf) pdf = new JS({ unit: "px", format: [w, h], compress: true });
       else pdf.addPage([w, h]);
-      pdf.addImage(im, "PNG", 0, 0, w, h);
+      pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h);
       await new Promise(r => setTimeout(r, 0));
     }
     if (!pdf) { toast("تعذّر التجهيز"); return; }
