@@ -1862,12 +1862,16 @@
       <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""}>◀ السابقة</button>
       <button class="act" id="pgMark">🔖 علّم موضعي</button>
       <button class="act" id="pgNext" ${p >= 604 ? "disabled" : ""}>التالية ▶</button>
-    </div>`;
+    </div>
+    <button class="act primary full" id="pgShare">📤 شارك هذه الصفحة (واتساب)</button>
+    <button class="act full" id="pgShareJuz">📑 شارك الجزء ${juz} كاملًا</button>`;
     view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} ﴾</h2><p>اضغط أيّ آية لعرض تفسيرها الميسّر</p></div>${out}${nav}`;
     view.querySelectorAll(".aya").forEach(el => el.addEventListener("click", () => showAyahTafseer(+el.dataset.s, +el.dataset.a)));
     const pv = document.getElementById("pgPrev"); if (pv) pv.addEventListener("click", () => renderMushafPage(p - 1));
     const nx = document.getElementById("pgNext"); if (nx) nx.addEventListener("click", () => renderMushafPage(p + 1));
     const mk = document.getElementById("pgMark"); if (mk) mk.addEventListener("click", () => { const f = refs[0] || [1, 1]; saveQuranLast(f[0], f[1]); toast("حُفظ موضع القراءة (صفحة " + p + ") 🔖"); });
+    const sh = document.getElementById("pgShare"); if (sh) sh.addEventListener("click", () => shareQuran(`📖 وِرد من القرآن الكريم — صفحة ${p} (الجزء ${juz})\nاقرأها معنا، ولنا وللدالّ على الخير الأجر 🤲`, "https://" + SITE + "/?p=" + p));
+    const shj = document.getElementById("pgShareJuz"); if (shj) shj.addEventListener("click", () => shareQuran(`📑 وِرد اليوم: الجزء ${juz} من القرآن الكريم\nلنقرأه معًا في ختمتنا 🤲`, "https://" + SITE + "/?juz=" + juz));
     if (anchor) { const t = document.getElementById(`aya-${anchor.s}-${anchor.a}`); if (t) { t.scrollIntoView({ block: "center" }); t.classList.add("flash"); } else window.scrollTo(0, 0); }
     else window.scrollTo(0, 0);
   }
@@ -1917,15 +1921,45 @@
       <div class="progress-label">${done} / 30 جزءًا (${pct}%)</div></div>
       <p class="hub-note">اضغط أيّ جزء لقراءته، أو علّمه مقروءًا من داخل صفحة القراءة.</p>
       ${grid}
+      <div class="khatmah-share">
+        <button class="act primary full" id="shareToday">📤 شارك وِرد اليوم (واتساب)</button>
+        <div class="mini-label">🤝 ختمة جماعية — وزّع الأجزاء على القروب</div>
+        <div class="group-row">
+          <input type="number" id="groupN" min="2" max="30" value="6" inputmode="numeric" />
+          <button class="act" id="distBtn">وزّع وشارك</button>
+        </div>
+        <p class="hub-note">أدخل عدد أفراد القروب، فنوزّع الأجزاء الثلاثين بينهم ونرسل التوزيع مع رابط مباشر لكل نصيب — يقرؤه من جواله فورًا.</p>
+      </div>
       <div class="mushaf-nav">
-        <button class="act primary" id="shareKhatmah">📤 شارك تقدّمي</button>
+        <button class="act" id="shareKhatmah">📊 شارك تقدّمي</button>
         <button class="act" id="resetKhatmah">↺ إعادة الختمة</button>
       </div>`;
     view.querySelectorAll(".khatmah-grid .jc-read").forEach(b => b.addEventListener("click", () => openJuz(parseInt(b.dataset.juz, 10))));
     view.querySelectorAll(".khatmah-grid .jc-check").forEach(b => b.addEventListener("click", () => { const n = parseInt(b.dataset.juz, 10); const kk = khatmah(); kk.done[n - 1] = !kk.done[n - 1]; saveKhatmah(kk); renderKhatmah(); }));
+    document.getElementById("shareToday").addEventListener("click", shareToday);
+    document.getElementById("distBtn").addEventListener("click", distributeGroup);
     document.getElementById("shareKhatmah").addEventListener("click", () => shareKhatmah(done, pct));
     document.getElementById("resetKhatmah").addEventListener("click", () => { if (confirm("إعادة ضبط الختمة من البداية؟")) { localStorage.removeItem("khatmah"); renderKhatmah(); } });
     window.scrollTo(0, 0);
+  }
+  function shareToday() {
+    const k = khatmah(); if (!k) return;
+    const perDay = Math.ceil(30 / k.days), elapsed = Math.floor((Date.now() - k.start) / 86400000) + 1;
+    const fromJ = Math.min(30, (elapsed - 1) * perDay + 1), toJ = Math.min(30, elapsed * perDay);
+    const range = fromJ === toJ ? `الجزء ${fromJ}` : `الأجزاء ${fromJ}–${toJ}`;
+    shareQuran(`📖 وِرد اليوم في ختمتنا: ${range}\nلنقرأه اليوم، وبإذن الله نُتمّ القرآن معًا 🤲`, "https://" + SITE + "/?juz=" + fromJ);
+  }
+  function distributeGroup() {
+    const el = document.getElementById("groupN");
+    const n = Math.max(2, Math.min(30, parseInt(el && el.value, 10) || 6));
+    const per = Math.floor(30 / n), extra = 30 % n;
+    let lines = [], j = 1;
+    for (let i = 1; i <= n; i++) {
+      const cnt = per + (i <= extra ? 1 : 0), from = j, to = j + cnt - 1; j = to + 1;
+      const range = from === to ? `الجزء ${from}` : `الأجزاء ${from}–${to}`;
+      lines.push(`• المشارك ${i}: ${range}\n   👈 https://${SITE}/?juz=${from}`);
+    }
+    shareQuran(`🤝 ختمة جماعية — لنختم القرآن معًا (${n} مشاركين)\n\n${lines.join("\n")}\n\nكلٌّ يقرأ نصيبه، وبإتمامها نكون قد ختمنا القرآن كاملًا بإذن الله 🤲`, "https://" + SITE + "/");
   }
   function shareKhatmah(done, pct) {
     const text = `🏁 ختمتي للقرآن الكريم\nأتممتُ ${done} من ٣٠ جزءًا (${pct}%) بفضل الله${done >= 30 ? "\nالحمد لله، تمّت الختمة — تقبّل الله 🤲" : "\nاللهم أعنّي على إتمامها"}\n\nاقرأ القرآن وابدأ ختمتك:\nhttps://${SITE}/`;
@@ -2014,6 +2048,24 @@
   });
   backBtn.addEventListener("click", () => { stopAudio(); if (typeof goBack === "function") goBack(); });
 
+  function routeFromURL() {
+    try {
+      const q = new URLSearchParams(location.search);
+      const p = parseInt(q.get("p") || "", 10), juz = parseInt(q.get("juz") || "", 10), surah = parseInt(q.get("surah") || "", 10);
+      if (p || juz || surah) {
+        currentTab = "quran";
+        tabbar.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === "quran"));
+        if (p) renderMushafPage(p); else if (juz) openJuz(juz); else openSurah(surah);
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  function shareQuran(text, url) {
+    if (navigator.share) navigator.share({ title: "القرآن الكريم", text: text, url: url }).catch(() => {});
+    else window.open("https://wa.me/?text=" + encodeURIComponent(text + "\n" + url), "_blank");
+  }
+
   initTheme();
-  renderAthkarHome();
+  if (!routeFromURL()) renderAthkarHome();
 })();
