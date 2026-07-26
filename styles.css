@@ -820,3 +820,20 @@ img, canvas, video { max-width: 100%; }
 /* زر مشاركة السورة في قائمة السور */
 .sr-share { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 1rem; }
 .sr-share:active { transform: scale(.92); }
+
+/* السحب لتقليب صفحات المصحف مع إبقاء التمرير العمودي */
+.mushaf-img-wrap { touch-action: pan-y; }
+
+/* ===== شاشة التعريف الأولى ===== */
+.intro-overlay { position: fixed; inset: 0; z-index: 80; background: rgba(6,12,11,.72); display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(3px); }
+.intro-box { background: var(--bg); border: 1px solid var(--line); border-radius: 22px; max-width: 480px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 26px 22px calc(env(safe-area-inset-bottom) + 22px); box-shadow: 0 20px 60px rgba(0,0,0,.45); text-align: center; }
+.intro-emoji { font-size: 2.6rem; }
+.intro-box h2 { color: var(--primary); margin: 8px 0 16px; font-size: 1.45rem; }
+[data-theme="dark"] .intro-box h2 { color: var(--accent); }
+.intro-list { list-style: none; text-align: right; display: flex; flex-direction: column; gap: 13px; margin: 6px 0 16px; }
+.intro-list li { display: flex; gap: 12px; align-items: flex-start; }
+.intro-list li span { font-size: 1.5rem; flex: 0 0 auto; }
+.intro-list li div { color: var(--text); line-height: 1.7; font-size: .95rem; }
+.intro-list b { color: var(--primary); }
+[data-theme="dark"] .intro-list b { color: var(--accent); }
+.intro-note { color: var(--text-muted); font-size: .85rem; line-height: 1.7; margin-bottom: 18px; }

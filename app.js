@@ -79,6 +79,7 @@
   function switchTab(tab) {
     stopAudio();
     try { tickerTimers.forEach(clearInterval); tickerTimers = []; } catch (e) {}
+    try { trapArmed = false; history.replaceState({ root: 1 }, ""); } catch (e) {}
     goBack = null;
     currentTab = tab;
     tabbar.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
@@ -209,7 +210,7 @@
   function renderHisnChapter(id) {
     const ch = HISN.find(c => c.id === id); if (!ch) return renderAthkarHome();
     appTitle.textContent = ch.title;
-    backBtn.classList.remove("hidden");
+    backBtn.classList.remove("hidden"); armTrap();
     goBack = renderAthkarHome;
     const cid = hcid(id);
     let html = `<div class="cat-head"><h2>${esc(ch.title)}</h2><p>من كتاب حصن المسلم</p></div>`;
@@ -285,7 +286,7 @@
   function renderCategory(catId) {
     const cat = ADHKAR.find(c => c.id === catId); if (!cat) return renderAthkarHome();
     appTitle.textContent = cat.title;
-    backBtn.classList.remove("hidden");
+    backBtn.classList.remove("hidden"); armTrap();
     goBack = renderAthkarHome;
     let html = `<div class="cat-head"><h2>${cat.title}</h2><p>${cat.subtitle}</p></div>
       <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
@@ -1627,7 +1628,7 @@
   /* ----- حول التطبيق والمصادر ----- */
   function renderAbout() {
     appTitle.textContent = "المصادر ومنهج التوثيق";
-    backBtn.classList.remove("hidden");
+    backBtn.classList.remove("hidden"); armTrap();
     goBack = renderAthkarHome;
     view.innerHTML = `
       <div class="about-box">
@@ -1800,7 +1801,7 @@
   }
   async function renderSurahRead(num, name) {
     appTitle.textContent = "سورة " + name;
-    backBtn.classList.remove("hidden"); goBack = renderQuran;
+    backBtn.classList.remove("hidden"); armTrap(); goBack = renderQuran;
     view.innerHTML = `<div class="cat-head"><h2>سورة ${name}</h2><p>القراءة والتفسير الميسّر — مجمع الملك فهد</p></div><div class="loading">جارٍ تحميل التفسير…</div>`;
     let T; try { T = await loadTafseer(); } catch (e) { view.querySelector(".loading").textContent = "تعذّر تحميل التفسير — تحقّق من الاتصال أول مرة."; return; }
     let html = "";
@@ -1837,18 +1838,19 @@
   function toArabicNum(n) { return String(n).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[+d]); }
   // البسملة مشتقّة حرفيًّا من المصدر الرسمي (نصّ 1:1 بعد إزالة علامة نهاية الآية)
   function bismText(T) { return ((T && T["1:1"]) ? T["1:1"].t : "").replace(/[\s ]*[ﭐ-﷿ﹰ-﻿]+[\s ]*$/, "").trim(); }
-  async function openAyahPage(s, a) { try { await loadPages(); } catch (e) { toast("تعذّر التحميل — تحقّق من الاتصال"); return; } renderMushafPage(A2P[s + ":" + a] || 1, { s: s, a: a }); }
+  let mushafBack = null;
+  async function openAyahPage(s, a) { mushafBack = renderQuran; try { await loadPages(); } catch (e) { toast("تعذّر التحميل — تحقّق من الاتصال"); return; } renderMushafPage(A2P[s + ":" + a] || 1, { s: s, a: a }); }
   function openSurah(num) { openAyahPage(num, 1); }
   function openLastRead() { const L = quranLast(); if (L) openAyahPage(L.s, L.a); }
   function renderJuzList() {
-    appTitle.textContent = "أجزاء القرآن"; backBtn.classList.remove("hidden"); goBack = renderQuran;
+    appTitle.textContent = "أجزاء القرآن"; backBtn.classList.remove("hidden"); armTrap(); goBack = renderQuran;
     let html = `<div class="cat-head"><h2>📑 الأجزاء الثلاثون</h2><p>اختر جزءًا للقراءة</p></div><div class="juz-grid">`;
     for (let n = 1; n <= 30; n++) { const s = JUZ_STARTS[n - 1][0]; html += `<button class="juz-cell" data-juz="${n}"><b>الجزء ${n}</b><small>${SURAHS[s - 1]}</small></button>`; }
     view.innerHTML = html + `</div>`;
     view.querySelectorAll(".juz-cell").forEach(b => b.addEventListener("click", () => openJuz(parseInt(b.dataset.juz, 10))));
     window.scrollTo(0, 0);
   }
-  async function openJuz(n) { if (!(n >= 1 && n <= 30)) return; try { await loadPages(); } catch (e) { toast("تعذّر التحميل — تحقّق من الاتصال"); return; } const st = JUZ_STARTS[n - 1]; renderMushafPage(A2P[st[0] + ":" + st[1]] || 1); }
+  async function openJuz(n) { if (!(n >= 1 && n <= 30)) return; try { await loadPages(); } catch (e) { toast("تعذّر التحميل — تحقّق من الاتصال"); return; } mushafBack = renderJuzList; const st = JUZ_STARTS[n - 1]; renderMushafPage(A2P[st[0] + ":" + st[1]] || 1); }
   function mushafImg(p) { return "mushaf/page" + String(p).padStart(3, "0") + ".png"; }
   function loadImg(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
   // صور المصدر: حبر أسود على خلفية شفّافة — نُسطّحها على ورق كريمي معتم لتظهر صحيحةً عند الحفظ/المشاركة/PDF
@@ -1862,10 +1864,10 @@
   }
   async function renderMushafPage(p, anchor) {
     p = Math.max(1, Math.min(604, p));
-    try { await loadPages(); } catch (e) { appTitle.textContent = "صفحة " + p; backBtn.classList.remove("hidden"); goBack = renderQuran; view.innerHTML = `<div class="err">تعذّر تحميل بيانات المصحف — تحقّق من الاتصال أوّل مرّة، ثم يعمل دون اتصال.</div>`; return; }
+    try { await loadPages(); } catch (e) { appTitle.textContent = "صفحة " + p; backBtn.classList.remove("hidden"); armTrap(); goBack = renderQuran; view.innerHTML = `<div class="err">تعذّر تحميل بيانات المصحف — تحقّق من الاتصال أوّل مرّة، ثم يعمل دون اتصال.</div>`; return; }
     const refs = PAGES[p] || [], juz = refs.length ? juzOfAyah(refs[0][0], refs[0][1]) : 1;
     const curSura = refs.length ? refs[0][0] : 1;
-    appTitle.textContent = "صفحة " + p + " / ٦٠٤"; backBtn.classList.remove("hidden"); goBack = renderQuran;
+    appTitle.textContent = "صفحة " + p + " / ٦٠٤"; backBtn.classList.remove("hidden"); armTrap(); goBack = mushafBack || renderQuran;
     view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} ﴾</h2><p>مصحف المدينة النبوية — الطبعة الرسمية</p></div>
       <div class="mushaf-jump">
         <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""} aria-label="الصفحة السابقة">◀</button>
@@ -1889,6 +1891,19 @@
     const mk = document.getElementById("pgMark"); if (mk) mk.addEventListener("click", () => { const f = refs[0] || [1, 1]; saveQuranLast(f[0], f[1]); toast("حُفظ موضع القراءة (صفحة " + p + ") 🔖"); });
     const sb = document.getElementById("pgShareBtn"); if (sb) sb.addEventListener("click", () => sharePageMenu(p, juz, curSura));
     const im = document.getElementById("mimg"); if (im) im.addEventListener("click", () => im.classList.toggle("zoom"));
+    const wrap = view.querySelector(".mushaf-img-wrap");
+    if (wrap) {
+      let sx = 0, sy = 0, st = 0;
+      wrap.addEventListener("touchstart", (e) => { if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now(); } }, { passive: true });
+      wrap.addEventListener("touchend", (e) => {
+        if (e.changedTouches.length !== 1 || (im && im.classList.contains("zoom"))) return;
+        const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+        if (Date.now() - st < 600 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+          if (dx < 0) { if (p < 604) renderMushafPage(p + 1); }   // سحب لليسار ⇦ التالية (اتجاه RTL)
+          else { if (p > 1) renderMushafPage(p - 1); }             // سحب لليمين ⇨ السابقة
+        }
+      }, { passive: true });
+    }
     if (anchor) saveQuranLast((refs[0] || [1, 1])[0], (refs[0] || [1, 1])[1]);
     window.scrollTo(0, 0);
   }
@@ -1911,7 +1926,7 @@
   }
   async function renderMushafText(p, anchor) {
     p = Math.max(1, Math.min(604, p));
-    appTitle.textContent = "تفسير صفحة " + p; backBtn.classList.remove("hidden"); goBack = () => renderMushafPage(p);
+    appTitle.textContent = "تفسير صفحة " + p; backBtn.classList.remove("hidden"); armTrap(); goBack = () => renderMushafPage(p);
     view.innerHTML = `<div class="loading">جارٍ التحميل…</div>`;
     let T; try { await loadPages(); T = await loadTafseer(); } catch (e) { view.innerHTML = `<div class="err">تعذّر التحميل — تحقّق من الاتصال أول مرة، وبعدها يعمل دون اتصال.</div>`; return; }
     if (document.fonts && document.fonts.load) { try { await document.fonts.load("40px 'UthmanicHafs'"); } catch (e) {} }
@@ -2074,7 +2089,7 @@
     else { toast("عُلّم الجزء " + n + " ✅ (ابدأ خطة ختمة لتتبّع تقدّمك)"); }
   }
   function renderKhatmah() {
-    appTitle.textContent = "ختمة القرآن"; backBtn.classList.remove("hidden"); goBack = renderQuran;
+    appTitle.textContent = "ختمة القرآن"; backBtn.classList.remove("hidden"); armTrap(); goBack = renderQuran;
     const k = khatmah();
     if (!k) {
       const opts = [[30, "شهر — جزء يوميًا"], [15, "نصف شهر — جزآن يوميًا"], [10, "عشرة أيام — ٣ أجزاء يوميًا"], [7, "أسبوع — أربعة أجزاء يوميًا"]];
@@ -2227,7 +2242,12 @@
     themeBtn.textContent = dark ? "☀" : "☾";
     localStorage.setItem("athkar_theme", dark ? "dark" : "light");
   });
-  backBtn.addEventListener("click", () => { stopAudio(); if (typeof goBack === "function") goBack(); });
+  // ===== دعم زرّ الرجوع في المتصفّح/أندرويد =====
+  let trapArmed = false;
+  function armTrap() { if (!trapArmed) { trapArmed = true; try { history.pushState({ trap: 1 }, ""); } catch (e) {} } }
+  backBtn.addEventListener("click", () => { if (typeof goBack === "function") { if (trapArmed) history.back(); else { stopAudio(); const g = goBack; g(); } } });
+  window.addEventListener("popstate", () => { trapArmed = false; stopAudio(); if (typeof goBack === "function") { const g = goBack; g(); } });
+  try { history.replaceState({ root: 1 }, ""); } catch (e) {}
 
   function routeFromURL() {
     try {
@@ -2247,6 +2267,27 @@
     else window.open("https://wa.me/?text=" + encodeURIComponent(text + "\n" + url), "_blank");
   }
 
+  function maybeShowIntro() {
+    if (localStorage.getItem("intro_seen")) return;
+    const m = document.createElement("div"); m.className = "intro-overlay";
+    m.innerHTML = `<div class="intro-box">
+      <div class="intro-emoji">📿</div>
+      <h2>أهلًا بك في «أذكار»</h2>
+      <ul class="intro-list">
+        <li><span>🌿</span><div><b>الأذكار</b> — أذكار الصباح والمساء وكامل «حصن المسلم»؛ اضغط الذكر ليُحسب تلقائيًّا.</div></li>
+        <li><span>📖</span><div><b>القرآن</b> — مصحف المدينة كاملًا للقراءة والاستماع، مع التفسير الميسّر، وخطة ختمة تشاركها في قروبك.</div></li>
+        <li><span>🎴</span><div><b>بطاقات</b> — صمّم ذكرًا أو دعاءً بتصميم جميل وشاركه هديةً.</div></li>
+        <li><span>🕌</span><div><b>المواقيت وأعمال</b> — مواقيت صلاتك وأبواب من الخير.</div></li>
+      </ul>
+      <p class="intro-note">يعمل دون إنترنت · صدقة جارية — انشره ولك أجره 🤲</p>
+      <button class="act primary full" id="introStart">ابدأ 🌱</button>
+    </div>`;
+    document.body.appendChild(m);
+    const done = () => { localStorage.setItem("intro_seen", "1"); m.remove(); };
+    m.querySelector("#introStart").addEventListener("click", done);
+  }
+
   initTheme();
   if (!routeFromURL()) renderAthkarHome();
+  maybeShowIntro();
 })();
