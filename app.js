@@ -19,7 +19,7 @@
   qrImg.onload = () => { if (document.getElementById("cardCanvas")) drawCard(); };
 
   const todayDate = new Date();
-  const today = todayDate.toISOString().slice(0, 10);
+  const today = todayDate.getFullYear() + "-" + String(todayDate.getMonth() + 1).padStart(2, "0") + "-" + String(todayDate.getDate()).padStart(2, "0");
   const PROGRESS_KEY = "athkar_progress_" + today;
   let progress = loadProgress();
 
@@ -78,6 +78,7 @@
   });
   function switchTab(tab) {
     stopAudio();
+    try { tickerTimers.forEach(clearInterval); tickerTimers = []; } catch (e) {}
     goBack = null;
     currentTab = tab;
     tabbar.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
@@ -271,6 +272,7 @@
     if (currentAudio && !currentAudio.paused) {
       currentAudio.pause(); btn.textContent = "▶ استماع للباب"; return;
     }
+    if (qAudio && !qAudio.paused) { try { qAudio.pause(); const pl = document.getElementById("player"); if (pl) pl.classList.add("hidden"); } catch (e) {} }
     if (!currentAudio || currentAudio._src !== btn.dataset.src) {
       if (currentAudio) currentAudio.pause();
       currentAudio = new Audio(btn.dataset.src); currentAudio._src = btn.dataset.src;
@@ -1717,6 +1719,7 @@
     backBtn.classList.add("hidden"); goBack = null;
     if (typeof RECITERS === "undefined") { view.innerHTML = `<p class="muted-line">تعذّر تحميل البيانات.</p>`; return; }
     qState.reciterIdx = parseInt(localStorage.getItem("quran_reciter") || "0", 10);
+    if (!(qState.reciterIdx >= 0 && qState.reciterIdx < RECITERS.length)) qState.reciterIdx = 0;
     const opts = RECITERS.map((r, i) => `<option value="${i}" ${i === qState.reciterIdx ? "selected" : ""}>${r.name}</option>`).join("");
     const last = quranLast();
     const resumeHTML = last ? `<button class="hub-resume" id="resumeRead">▶ متابعة القراءة — سورة ${SURAHS[last.s - 1]} : ${last.a}</button>` : "";
@@ -1834,7 +1837,7 @@
   function toArabicNum(n) { return String(n).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[+d]); }
   // البسملة مشتقّة حرفيًّا من المصدر الرسمي (نصّ 1:1 بعد إزالة علامة نهاية الآية)
   function bismText(T) { return ((T && T["1:1"]) ? T["1:1"].t : "").replace(/[\s ]*[ﭐ-﷿ﹰ-﻿]+[\s ]*$/, "").trim(); }
-  async function openAyahPage(s, a) { await loadPages(); renderMushafPage(A2P[s + ":" + a] || 1, { s: s, a: a }); }
+  async function openAyahPage(s, a) { try { await loadPages(); } catch (e) { toast("تعذّر التحميل — تحقّق من الاتصال"); return; } renderMushafPage(A2P[s + ":" + a] || 1, { s: s, a: a }); }
   function openSurah(num) { openAyahPage(num, 1); }
   function openLastRead() { const L = quranLast(); if (L) openAyahPage(L.s, L.a); }
   function renderJuzList() {
@@ -1845,7 +1848,7 @@
     view.querySelectorAll(".juz-cell").forEach(b => b.addEventListener("click", () => openJuz(parseInt(b.dataset.juz, 10))));
     window.scrollTo(0, 0);
   }
-  async function openJuz(n) { await loadPages(); const st = JUZ_STARTS[n - 1]; renderMushafPage(A2P[st[0] + ":" + st[1]] || 1); }
+  async function openJuz(n) { if (!(n >= 1 && n <= 30)) return; try { await loadPages(); } catch (e) { toast("تعذّر التحميل — تحقّق من الاتصال"); return; } const st = JUZ_STARTS[n - 1]; renderMushafPage(A2P[st[0] + ":" + st[1]] || 1); }
   function mushafImg(p) { return "mushaf/page" + String(p).padStart(3, "0") + ".png"; }
   function loadImg(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
   // صور المصدر: حبر أسود على خلفية شفّافة — نُسطّحها على ورق كريمي معتم لتظهر صحيحةً عند الحفظ/المشاركة/PDF
@@ -1859,32 +1862,52 @@
   }
   async function renderMushafPage(p, anchor) {
     p = Math.max(1, Math.min(604, p));
-    await loadPages();
+    try { await loadPages(); } catch (e) { appTitle.textContent = "صفحة " + p; backBtn.classList.remove("hidden"); goBack = renderQuran; view.innerHTML = `<div class="err">تعذّر تحميل بيانات المصحف — تحقّق من الاتصال أوّل مرّة، ثم يعمل دون اتصال.</div>`; return; }
     const refs = PAGES[p] || [], juz = refs.length ? juzOfAyah(refs[0][0], refs[0][1]) : 1;
+    const curSura = refs.length ? refs[0][0] : 1;
     appTitle.textContent = "صفحة " + p + " / ٦٠٤"; backBtn.classList.remove("hidden"); goBack = renderQuran;
-    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} ﴾</h2><p>صفحة مصحف المدينة النبوية — الطبعة الرسمية</p></div>
+    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} ﴾</h2><p>مصحف المدينة النبوية — الطبعة الرسمية</p></div>
+      <div class="mushaf-jump">
+        <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""} aria-label="الصفحة السابقة">◀</button>
+        <input type="number" id="pgJump" min="1" max="604" value="${p}" inputmode="numeric" aria-label="اذهب إلى رقم الصفحة" />
+        <span class="mj-of">/ ٦٠٤</span>
+        <button class="act" id="pgNext" ${p >= 604 ? "disabled" : ""} aria-label="الصفحة التالية">▶</button>
+      </div>
+      <select id="pgSura" class="region-sel" aria-label="اذهب إلى سورة">${SURAHS.map((n, i) => `<option value="${i + 1}" ${i + 1 === curSura ? "selected" : ""}>${i + 1}. سورة ${n}</option>`).join("")}</select>
       <div class="mushaf-img-wrap"><img class="mushaf-img" id="mimg" src="${mushafImg(p)}" alt="صفحة ${p} من المصحف" /></div>
       <div class="mushaf-nav">
-        <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""}>◀ السابقة</button>
         <button class="act" id="pgText">📖 التفسير</button>
-        <button class="act" id="pgNext" ${p >= 604 ? "disabled" : ""}>التالية ▶</button>
-      </div>
-      <button class="act primary full" id="pgShareImg">🖼️ شارك صورة الصفحة (واتساب)</button>
-      <button class="act full" id="pgPdf">📄 شارك الجزء ${juz} ملفَّ PDF</button>
-      <div class="mushaf-nav">
         <button class="act" id="pgMark">🔖 علّم موضعي</button>
-        <button class="act" id="pgShareLink">🔗 رابط الصفحة</button>
+        <button class="act primary" id="pgShareBtn">📤 مشاركة</button>
       </div>`;
+    const go = () => { const el = document.getElementById("pgJump"); const v = parseInt(el && el.value, 10); if (v >= 1 && v <= 604) renderMushafPage(v); };
     const pv = document.getElementById("pgPrev"); if (pv) pv.addEventListener("click", () => renderMushafPage(p - 1));
     const nx = document.getElementById("pgNext"); if (nx) nx.addEventListener("click", () => renderMushafPage(p + 1));
+    const jmp = document.getElementById("pgJump"); if (jmp) { jmp.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); }); jmp.addEventListener("change", go); }
+    const su = document.getElementById("pgSura"); if (su) su.addEventListener("change", () => openSurah(parseInt(su.value, 10)));
     const tx = document.getElementById("pgText"); if (tx) tx.addEventListener("click", () => renderMushafText(p));
     const mk = document.getElementById("pgMark"); if (mk) mk.addEventListener("click", () => { const f = refs[0] || [1, 1]; saveQuranLast(f[0], f[1]); toast("حُفظ موضع القراءة (صفحة " + p + ") 🔖"); });
-    const si = document.getElementById("pgShareImg"); if (si) si.addEventListener("click", () => sharePageImage(p, juz));
-    const pd = document.getElementById("pgPdf"); if (pd) pd.addEventListener("click", () => shareJuzPDF(juz));
-    const sl = document.getElementById("pgShareLink"); if (sl) sl.addEventListener("click", () => shareQuran(`📖 صفحة ${p} (الجزء ${juz}) من القرآن الكريم — اقرأها معنا 🤲`, "https://" + SITE + "/?p=" + p));
+    const sb = document.getElementById("pgShareBtn"); if (sb) sb.addEventListener("click", () => sharePageMenu(p, juz, curSura));
     const im = document.getElementById("mimg"); if (im) im.addEventListener("click", () => im.classList.toggle("zoom"));
     if (anchor) saveQuranLast((refs[0] || [1, 1])[0], (refs[0] || [1, 1])[1]);
     window.scrollTo(0, 0);
+  }
+  function sharePageMenu(p, juz, sura) {
+    let m = document.getElementById("shareSheet");
+    if (!m) { m = document.createElement("div"); m.id = "shareSheet"; m.className = "ayah-modal"; document.body.appendChild(m); }
+    m.innerHTML = `<div class="am-box"><button class="am-close" aria-label="إغلاق">✕</button>
+      <div class="am-ref">مشاركة</div>
+      <button class="act primary full" id="shImg">🖼️ صورة هذه الصفحة (واتساب)</button>
+      <button class="act full" id="shSura">📖 سورة ${SURAHS[sura - 1]} — ملفَّ PDF</button>
+      <button class="act full" id="shJuz">📄 الجزء ${juz} — ملفَّ PDF</button>
+      <button class="act full" id="shLink">🔗 رابط الصفحة</button></div>`;
+    m.classList.add("show");
+    const close = () => m.classList.remove("show");
+    m.onclick = (ev) => { if (ev.target === m || ev.target.closest(".am-close")) close(); };
+    m.querySelector("#shImg").onclick = () => { close(); sharePageImage(p, juz); };
+    m.querySelector("#shSura").onclick = () => { close(); shareSurahPDF(sura); };
+    m.querySelector("#shJuz").onclick = () => { close(); shareJuzPDF(juz); };
+    m.querySelector("#shLink").onclick = () => { close(); shareQuran(`📖 صفحة ${p} (الجزء ${juz}) من القرآن الكريم — اقرأها معنا 🤲`, "https://" + SITE + "/?p=" + p); };
   }
   async function renderMushafText(p, anchor) {
     p = Math.max(1, Math.min(604, p));
@@ -1926,14 +1949,23 @@
     const e = TAFSEER && TAFSEER[s + ":" + a]; if (!e) return;
     let m = document.getElementById("ayahModal");
     if (!m) { m = document.createElement("div"); m.id = "ayahModal"; m.className = "ayah-modal"; document.body.appendChild(m); }
+    m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true");
     m.innerHTML = `<div class="am-box"><button class="am-close" aria-label="إغلاق">✕</button>
       <div class="am-ref">سورة ${SURAHS[s - 1]} · الآية ${a}</div>
       <div class="am-aya">${e.t}</div>
       <div class="am-taf"><b>التفسير الميسّر</b><p>${esc(e.f)}</p></div>
       <button class="act primary" id="amBookmark">🔖 اجعلها موضع المتابعة</button></div>`;
+    const prevFocus = document.activeElement;
+    const close = () => { m.classList.remove("show"); document.removeEventListener("keydown", onKey); if (prevFocus && prevFocus.focus) try { prevFocus.focus(); } catch (er) {} };
+    const onKey = (ev) => {
+      if (ev.key === "Escape") { close(); return; }
+      if (ev.key === "Tab") { const f = m.querySelectorAll("button"); if (!f.length) return; const first = f[0], last = f[f.length - 1]; if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); } else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); } }
+    };
     m.classList.add("show");
-    m.onclick = (ev) => { if (ev.target === m || ev.target.closest(".am-close")) m.classList.remove("show"); };
-    const bm = m.querySelector("#amBookmark"); if (bm) bm.addEventListener("click", () => { saveQuranLast(s, a); m.classList.remove("show"); toast("حُفظ موضع القراءة 🔖"); });
+    m.onclick = (ev) => { if (ev.target === m || ev.target.closest(".am-close")) close(); };
+    document.addEventListener("keydown", onKey);
+    const cbtn = m.querySelector(".am-close"); if (cbtn) cbtn.focus();
+    const bm = m.querySelector("#amBookmark"); if (bm) bm.addEventListener("click", () => { saveQuranLast(s, a); close(); toast("حُفظ موضع القراءة 🔖"); });
   }
   // ===== توليد صورة صفحة المصحف ومشاركة الجزء PDF =====
   let _jspdfP = null;

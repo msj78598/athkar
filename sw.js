@@ -1,5 +1,5 @@
 /* Service Worker — عمل بدون إنترنت + تحديث تلقائي للنسخ الجديدة */
-const CACHE = "athkar-v62";
+const CACHE = "athkar-v63";
 const ASSETS = [
   "./",
   "./index.html",
@@ -60,10 +60,12 @@ self.addEventListener("fetch", (e) => {
   }
 
   // باقي الموارد (صور، خطوط): الكاش أولًا للسرعة
+  const isFont = /fonts\.(googleapis|gstatic)\.com/.test(req.url);
   e.respondWith(
     caches.match(req).then((cached) => cached || fetch(req).then((res) => {
       const copy = res.clone();
-      if (res.ok && (url.origin === self.location.origin || req.url.includes("fonts"))) {
+      // نخزّن موارد الأصل الناجحة، وخطوط Google حتى لو كانت استجابتها مبهمة (opaque) لتعمل دون اتصال
+      if ((url.origin === self.location.origin && res.ok) || isFont) {
         caches.open(CACHE).then((c) => c.put(req, copy));
       }
       return res;

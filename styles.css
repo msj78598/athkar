@@ -182,7 +182,18 @@ body {
 [data-theme="dark"] .ticker.a .tk-now { color: var(--primary); }
 .ticker.b .tk-now { color: var(--primary); }
 .ticker.b .tk-now.show { text-shadow: 0 0 10px rgba(200, 162, 74, .22); }
-@media (prefers-reduced-motion: reduce) { .tk-now { transition: opacity .2s; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .tk-now { transition: opacity .2s; transform: none; }
+  .ayah-card.flash { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* شريط القفزة إلى صفحة في عارض المصحف */
+.mushaf-jump { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.mushaf-jump .act { flex: 0 0 auto; min-width: 52px; }
+.mushaf-jump #pgJump { flex: 1; min-width: 0; text-align: center; font-weight: 700; font-size: 1.1rem; padding: 11px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font-family: "Tajawal"; }
+.mushaf-jump .mj-of { color: var(--text-muted); font-size: .9rem; white-space: nowrap; }
+#pgSura { margin-bottom: 12px; }
 
 /* ===== شريط التبويب السفلي ===== */
 .bottom-dock { position: sticky; bottom: 0; z-index: 20; }
