@@ -1771,17 +1771,21 @@
         <span class="sr-num">${num}</span>
         <span class="sr-name">${cur ? "🔊 " : ""}${name}</span>
         <button class="sr-read" data-read="${num}" title="قراءة وتفسير">📖</button>
-        <button class="sr-dl ${dl ? "done" : ""}" data-dl="${i}" title="${dl ? "محمّلة — اضغط للحذف" : "تحميل"}">${dl ? "✓" : "⬇️"}</button>
+        <button class="sr-share" data-share="${num}" title="مشاركة السورة (PDF)">📤</button>
+        <button class="sr-dl ${dl ? "done" : ""}" data-dl="${i}" title="${dl ? "محمّلة — اضغط للحذف" : "تحميل الصوت"}">${dl ? "✓" : "⬇️"}</button>
       </div>`;
     }).join("");
     box.querySelectorAll(".surah-row").forEach(r => r.addEventListener("click", (e) => {
-      if (e.target.closest(".sr-dl") || e.target.closest(".sr-read")) return; playSurah(parseInt(r.dataset.i, 10));
+      if (e.target.closest(".sr-dl") || e.target.closest(".sr-read") || e.target.closest(".sr-share")) return; playSurah(parseInt(r.dataset.i, 10));
     }));
     box.querySelectorAll(".sr-dl").forEach(b => b.addEventListener("click", (e) => {
       e.stopPropagation(); toggleDownload(parseInt(b.dataset.dl, 10), b);
     }));
     box.querySelectorAll(".sr-read").forEach(b => b.addEventListener("click", (e) => {
       e.stopPropagation(); openSurah(parseInt(b.dataset.read, 10));
+    }));
+    box.querySelectorAll(".sr-share").forEach(b => b.addEventListener("click", (e) => {
+      e.stopPropagation(); shareSurahPDF(parseInt(b.dataset.share, 10));
     }));
   }
 
@@ -1990,9 +1994,12 @@
     const nx = JUZ_STARTS[juz], nxP = A2P[nx[0] + ":" + nx[1]], fr = (PAGES[nxP] || [])[0];
     return (fr && fr[0] === nx[0] && fr[1] === nx[1]) ? nxP - 1 : nxP;
   }
-  async function shareRangePDF(fromJuz, toJuz, caption) {
-    await loadPages();
-    const st = JUZ_STARTS[fromJuz - 1], startP = A2P[st[0] + ":" + st[1]], lastP = juzLastPage(toJuz);
+  function surahLastPage(s) {
+    if (s >= 114) return 604;
+    const nf = A2P[(s + 1) + ":1"], first = (PAGES[nf] || [])[0];
+    return (first && first[0] === s + 1 && first[1] === 1) ? nf - 1 : nf;
+  }
+  async function buildAndSharePDF(startP, lastP, fileName, caption) {
     const total = lastP - startP + 1;
     toast(`جارٍ تجهيز ملفّ PDF (${total} صفحة)… انتظر قليلًا`);
     try { await ensureJsPDF(); } catch (e) { toast("تعذّر تحميل مولّد PDF — تحقّق من الاتصال"); return; }
@@ -2006,15 +2013,25 @@
       await new Promise(r => setTimeout(r, 0));
     }
     if (!pdf) { toast("تعذّر التجهيز"); return; }
-    const name = fromJuz === toJuz ? `الجزء-${fromJuz}.pdf` : `الأجزاء-${fromJuz}-${toJuz}.pdf`;
-    const blob = pdf.output("blob"), file = new File([blob], name, { type: "application/pdf" });
-    const txt = caption || (fromJuz === toJuz ? `📑 الجزء ${fromJuz} من القرآن الكريم 🤲` : `📑 الأجزاء ${fromJuz}–${toJuz} من القرآن الكريم 🤲`);
+    const blob = pdf.output("blob"), file = new File([blob], fileName, { type: "application/pdf" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], text: txt }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+      try { await navigator.share({ files: [file], text: caption }); return; } catch (e) { if (e && e.name === "AbortError") return; }
     }
-    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 8000);
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 8000);
+  }
+  async function shareRangePDF(fromJuz, toJuz, caption) {
+    await loadPages();
+    const st = JUZ_STARTS[fromJuz - 1], startP = A2P[st[0] + ":" + st[1]], lastP = juzLastPage(toJuz);
+    const name = fromJuz === toJuz ? `الجزء-${fromJuz}.pdf` : `الأجزاء-${fromJuz}-${toJuz}.pdf`;
+    const cap = caption || (fromJuz === toJuz ? `📑 الجزء ${fromJuz} من القرآن الكريم 🤲` : `📑 الأجزاء ${fromJuz}–${toJuz} من القرآن الكريم 🤲`);
+    return buildAndSharePDF(startP, lastP, name, cap);
   }
   function shareJuzPDF(juz) { return shareRangePDF(juz, juz); }
+  async function shareSurahPDF(surah) {
+    await loadPages();
+    const startP = A2P[surah + ":1"], lastP = surahLastPage(surah), nm = SURAHS[surah - 1];
+    return buildAndSharePDF(startP, lastP, `سورة-${nm}.pdf`, `📖 سورة ${nm} من مصحف المدينة النبوية 🤲\nhttps://${SITE}/?surah=${surah}`);
+  }
   // الختمة
   function khatmah() { try { return JSON.parse(localStorage.getItem("khatmah") || "null"); } catch (e) { return null; } }
   function saveKhatmah(k) { localStorage.setItem("khatmah", JSON.stringify(k)); }
