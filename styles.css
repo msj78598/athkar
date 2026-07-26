@@ -800,3 +800,8 @@ img, canvas, video { max-width: 100%; }
 .group-row { display: flex; gap: 10px; margin-top: 4px; }
 .group-row input { width: 90px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font-family: "Tajawal"; font-size: 1.1rem; text-align: center; font-weight: 700; }
 .group-row .act { flex: 1; margin: 0; }
+
+/* ===== عارض صور صفحات المصحف ===== */
+.mushaf-img-wrap { text-align: center; margin: 4px 0 14px; overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+.mushaf-img { width: 100%; max-width: 540px; height: auto; border-radius: 6px; box-shadow: var(--shadow); background: #fff; cursor: zoom-in; }
+.mushaf-img.zoom { max-width: none; width: auto; cursor: zoom-out; }

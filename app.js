@@ -1633,7 +1633,8 @@
         <p>يعتمد هذا التطبيق على <b>القرآن الكريم</b> و<b>السنة النبوية الصحيحة</b> فقط، ويتحرّى الأذكار الثابتة، ويتجنّب الضعيف والبدع.</p>
         <h3>المصادر</h3>
         <ul>
-          <li>القرآن الكريم (برواية حفص عن عاصم).</li>
+          <li><b>القرآن الكريم</b> — النصّ العثماني وتفسيره الميسّر من بيانات <b>مجمع الملك فهد لطباعة المصحف الشريف</b> (رواية حفص)، والنصّ مطابق لمصدره حرفيًّا 100%.</li>
+          <li><b>صور صفحات المصحف</b>: مصحف المدينة النبوية (الطبعة الرسمية) — تُعرض للقراءة والمدارسة.</li>
           <li>صحيح البخاري وصحيح مسلم، والسنن الأربعة.</li>
           <li>كتاب «حصن المسلم» للشيخ سعيد بن علي القحطاني رحمه الله — من مصدره الرسمي.</li>
           <li>تصحيحات أهل العلم المعتبرين كالشيخ الألباني وغيره.</li>
@@ -1841,9 +1842,40 @@
     window.scrollTo(0, 0);
   }
   async function openJuz(n) { await loadPages(); const st = JUZ_STARTS[n - 1]; renderMushafPage(A2P[st[0] + ":" + st[1]] || 1); }
+  function mushafImg(p) { return "mushaf/page" + String(p).padStart(3, "0") + ".png"; }
+  function loadImg(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
   async function renderMushafPage(p, anchor) {
     p = Math.max(1, Math.min(604, p));
+    await loadPages();
+    const refs = PAGES[p] || [], juz = refs.length ? juzOfAyah(refs[0][0], refs[0][1]) : 1;
     appTitle.textContent = "صفحة " + p + " / ٦٠٤"; backBtn.classList.remove("hidden"); goBack = renderQuran;
+    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} ﴾</h2><p>صفحة مصحف المدينة النبوية — الطبعة الرسمية</p></div>
+      <div class="mushaf-img-wrap"><img class="mushaf-img" id="mimg" src="${mushafImg(p)}" alt="صفحة ${p} من المصحف" /></div>
+      <div class="mushaf-nav">
+        <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""}>◀ السابقة</button>
+        <button class="act" id="pgText">📖 التفسير</button>
+        <button class="act" id="pgNext" ${p >= 604 ? "disabled" : ""}>التالية ▶</button>
+      </div>
+      <button class="act primary full" id="pgShareImg">🖼️ شارك صورة الصفحة (واتساب)</button>
+      <button class="act full" id="pgPdf">📄 شارك الجزء ${juz} ملفَّ PDF</button>
+      <div class="mushaf-nav">
+        <button class="act" id="pgMark">🔖 علّم موضعي</button>
+        <button class="act" id="pgShareLink">🔗 رابط الصفحة</button>
+      </div>`;
+    const pv = document.getElementById("pgPrev"); if (pv) pv.addEventListener("click", () => renderMushafPage(p - 1));
+    const nx = document.getElementById("pgNext"); if (nx) nx.addEventListener("click", () => renderMushafPage(p + 1));
+    const tx = document.getElementById("pgText"); if (tx) tx.addEventListener("click", () => renderMushafText(p));
+    const mk = document.getElementById("pgMark"); if (mk) mk.addEventListener("click", () => { const f = refs[0] || [1, 1]; saveQuranLast(f[0], f[1]); toast("حُفظ موضع القراءة (صفحة " + p + ") 🔖"); });
+    const si = document.getElementById("pgShareImg"); if (si) si.addEventListener("click", () => sharePageImage(p, juz));
+    const pd = document.getElementById("pgPdf"); if (pd) pd.addEventListener("click", () => shareJuzPDF(juz));
+    const sl = document.getElementById("pgShareLink"); if (sl) sl.addEventListener("click", () => shareQuran(`📖 صفحة ${p} (الجزء ${juz}) من القرآن الكريم — اقرأها معنا 🤲`, "https://" + SITE + "/?p=" + p));
+    const im = document.getElementById("mimg"); if (im) im.addEventListener("click", () => im.classList.toggle("zoom"));
+    if (anchor) saveQuranLast((refs[0] || [1, 1])[0], (refs[0] || [1, 1])[1]);
+    window.scrollTo(0, 0);
+  }
+  async function renderMushafText(p, anchor) {
+    p = Math.max(1, Math.min(604, p));
+    appTitle.textContent = "تفسير صفحة " + p; backBtn.classList.remove("hidden"); goBack = () => renderMushafPage(p);
     view.innerHTML = `<div class="loading">جارٍ التحميل…</div>`;
     let T; try { await loadPages(); T = await loadTafseer(); } catch (e) { view.innerHTML = `<div class="err">تعذّر التحميل — تحقّق من الاتصال أول مرة، وبعدها يعمل دون اتصال.</div>`; return; }
     if (document.fonts && document.fonts.load) { try { await document.fonts.load("40px 'UthmanicHafs'"); } catch (e) {} }
@@ -1864,24 +1896,16 @@
     flush();
     const nav = `<div class="mushaf-nav">
       <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""}>◀ السابقة</button>
-      <button class="act" id="pgMark">🔖 علّم</button>
+      <button class="act" id="pgImg">🖼️ صورة الصفحة</button>
       <button class="act" id="pgNext" ${p >= 604 ? "disabled" : ""}>التالية ▶</button>
     </div>
-    <button class="act primary full" id="pgShareImg">🖼️ شارك صورة الصفحة (واتساب)</button>
-    <button class="act full" id="pgPdf">📄 حمّل/شارك الجزء ${juz} ملفَّ PDF</button>
-    <div class="mushaf-nav">
-      <button class="act" id="pgShare">🔗 رابط الصفحة</button>
-      <button class="act" id="pgShareJuz">🔗 رابط الجزء</button>
-    </div>`;
-    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} ﴾</h2><p>اضغط أيّ آية لعرض تفسيرها الميسّر · شارك الصفحة صورةً أو الجزء PDF</p></div>${out}${nav}`;
+    <button class="act full" id="pgMark">🔖 علّم موضعي هنا</button>`;
+    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} — تفسير ﴾</h2><p>اضغط أيّ آية لعرض تفسيرها الميسّر</p></div>${out}${nav}`;
     view.querySelectorAll(".aya").forEach(el => el.addEventListener("click", () => showAyahTafseer(+el.dataset.s, +el.dataset.a)));
-    const pv = document.getElementById("pgPrev"); if (pv) pv.addEventListener("click", () => renderMushafPage(p - 1));
-    const nx = document.getElementById("pgNext"); if (nx) nx.addEventListener("click", () => renderMushafPage(p + 1));
+    const pv = document.getElementById("pgPrev"); if (pv) pv.addEventListener("click", () => renderMushafText(p - 1));
+    const nx = document.getElementById("pgNext"); if (nx) nx.addEventListener("click", () => renderMushafText(p + 1));
+    const ig = document.getElementById("pgImg"); if (ig) ig.addEventListener("click", () => renderMushafPage(p));
     const mk = document.getElementById("pgMark"); if (mk) mk.addEventListener("click", () => { const f = refs[0] || [1, 1]; saveQuranLast(f[0], f[1]); toast("حُفظ موضع القراءة (صفحة " + p + ") 🔖"); });
-    const si = document.getElementById("pgShareImg"); if (si) si.addEventListener("click", () => sharePageImage(p, juz));
-    const pd = document.getElementById("pgPdf"); if (pd) pd.addEventListener("click", () => shareJuzPDF(juz));
-    const sh = document.getElementById("pgShare"); if (sh) sh.addEventListener("click", () => shareQuran(`📖 وِرد من القرآن الكريم — صفحة ${p} (الجزء ${juz})\nاقرأها معنا، ولنا وللدالّ على الخير الأجر 🤲`, "https://" + SITE + "/?p=" + p));
-    const shj = document.getElementById("pgShareJuz"); if (shj) shj.addEventListener("click", () => shareQuran(`📑 وِرد اليوم: الجزء ${juz} من القرآن الكريم\nلنقرأه معًا في ختمتنا 🤲`, "https://" + SITE + "/?juz=" + juz));
     if (anchor) { const t = document.getElementById(`aya-${anchor.s}-${anchor.a}`); if (t) { t.scrollIntoView({ block: "center" }); t.classList.add("flash"); } else window.scrollTo(0, 0); }
     else window.scrollTo(0, 0);
   }
@@ -1942,15 +1966,14 @@
   }
   async function sharePageImage(p, juz) {
     toast("جارٍ تجهيز صورة الصفحة…");
-    let c; try { c = await renderPageCanvas(p); } catch (e) { toast("تعذّر التجهيز — تحقّق من الاتصال أول مرة"); return; }
-    c.toBlob(async (blob) => {
-      if (!blob) return;
+    try {
+      const r = await fetch(mushafImg(p)); const blob = await r.blob();
       const file = new File([blob], `مصحف-صفحة-${p}.png`, { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], text: `📖 وِرد اليوم — صفحة ${p} (الجزء ${juz}) من القرآن الكريم` }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+        try { await navigator.share({ files: [file], text: `📖 صفحة ${p} (الجزء ${juz}) من مصحف المدينة النبوية 🤲` }); return; } catch (e) { if (e && e.name === "AbortError") return; }
       }
       const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `مصحف-صفحة-${p}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
-    }, "image/png");
+    } catch (e) { toast("تعذّر تجهيز الصورة"); }
   }
   function juzLastPage(juz) {
     if (juz >= 30) return 604;
@@ -1965,11 +1988,11 @@
     try { await ensureJsPDF(); } catch (e) { toast("تعذّر تحميل مولّد PDF — تحقّق من الاتصال"); return; }
     const JS = window.jspdf.jsPDF; let pdf = null;
     for (let p = startP; p <= lastP; p++) {
-      let c; try { c = await renderPageCanvas(p); } catch (e) { continue; }
-      const w = c.width, h = c.height;
+      let im; try { im = await loadImg(mushafImg(p)); } catch (e) { continue; }
+      const w = im.naturalWidth, h = im.naturalHeight;
       if (!pdf) pdf = new JS({ unit: "px", format: [w, h], compress: true });
       else pdf.addPage([w, h]);
-      pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h);
+      pdf.addImage(im, "PNG", 0, 0, w, h);
       await new Promise(r => setTimeout(r, 0));
     }
     if (!pdf) { toast("تعذّر التجهيز"); return; }
