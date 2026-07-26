@@ -1827,6 +1827,8 @@
   let PAGES = null, A2P = null;
   async function loadPages() { if (PAGES) return; const r = await fetch("data/pages.json"); PAGES = await r.json(); A2P = {}; for (const p in PAGES) PAGES[p].forEach(x => { A2P[x[0] + ":" + x[1]] = +p; }); }
   function toArabicNum(n) { return String(n).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[+d]); }
+  // البسملة مشتقّة حرفيًّا من المصدر الرسمي (نصّ 1:1 بعد إزالة علامة نهاية الآية)
+  function bismText(T) { return ((T && T["1:1"]) ? T["1:1"].t : "").replace(/[\s ]*[ﭐ-﷿ﹰ-﻿]+[\s ]*$/, "").trim(); }
   async function openAyahPage(s, a) { await loadPages(); renderMushafPage(A2P[s + ":" + a] || 1, { s: s, a: a }); }
   function openSurah(num) { openAyahPage(num, 1); }
   function openLastRead() { const L = quranLast(); if (L) openAyahPage(L.s, L.a); }
@@ -1844,8 +1846,10 @@
     appTitle.textContent = "صفحة " + p + " / ٦٠٤"; backBtn.classList.remove("hidden"); goBack = renderQuran;
     view.innerHTML = `<div class="loading">جارٍ التحميل…</div>`;
     let T; try { await loadPages(); T = await loadTafseer(); } catch (e) { view.innerHTML = `<div class="err">تعذّر التحميل — تحقّق من الاتصال أول مرة، وبعدها يعمل دون اتصال.</div>`; return; }
+    if (document.fonts && document.fonts.load) { try { await document.fonts.load("40px 'UthmanicHafs'"); } catch (e) {} }
     const refs = PAGES[p] || [];
     const juz = refs.length ? juzOfAyah(refs[0][0], refs[0][1]) : 1;
+    const BISM = bismText(T);
     let out = "", curS = -1, flow = "";
     const flush = () => { if (flow) { out += `<div class="mushaf-page">${flow}</div>`; flow = ""; } };
     refs.forEach(ref => {
@@ -1853,9 +1857,9 @@
       if (s !== curS) {
         flush(); curS = s;
         out += `<div class="mushaf-sura">سورة ${SURAHS[s - 1]}</div>`;
-        if (a === 1 && s !== 1 && s !== 9) out += `<div class="mushaf-basmala">بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ</div>`;
+        if (a === 1 && s !== 1 && s !== 9) out += `<div class="mushaf-basmala">${BISM}</div>`;
       }
-      flow += `<span class="aya" id="aya-${s}-${a}" data-s="${s}" data-a="${a}">${e.t}<span class="aendmark">${toArabicNum(a)}</span></span> `;
+      flow += `<span class="aya" id="aya-${s}-${a}" data-s="${s}" data-a="${a}">${e.t}</span> `;
     });
     flush();
     const nav = `<div class="mushaf-nav">
@@ -1904,34 +1908,36 @@
   }
   async function renderPageCanvas(p) {
     await loadPages(); const T = await loadTafseer();
-    if (document.fonts && document.fonts.load) { try { await Promise.all([document.fonts.load("40px 'UthmanicHafs'"), document.fonts.load("700 34px 'Tajawal'")]); } catch (e) {} }
+    if (document.fonts && document.fonts.load) { try { await Promise.all([document.fonts.load("64px 'UthmanicHafs'"), document.fonts.load("700 52px 'Tajawal'")]); } catch (e) {} }
     const refs = PAGES[p] || [], juz = refs.length ? juzOfAyah(refs[0][0], refs[0][1]) : 1;
-    const W = 900, pad = 66, contentW = W - pad * 2, FS = 40, LH = Math.round(FS * 2.15);
+    const BISM = bismText(T);
+    const W = 1560, pad = 116, contentW = W - pad * 2, FS = 64, LH = Math.round(FS * 2.15);
     const meas = document.createElement("canvas").getContext("2d");
     meas.font = `${FS}px 'UthmanicHafs','Amiri Quran',serif`;
     let blocks = [], curS = -1, buf = "";
     const flush = () => { if (buf.trim()) wrapLines(meas, buf.trim(), contentW).forEach(l => blocks.push({ t: "line", v: l })); buf = ""; };
-    refs.forEach(r => { const s = r[0], a = r[1], e = T[s + ":" + a]; if (!e) return; if (s !== curS) { flush(); curS = s; blocks.push({ t: "sura", v: SURAHS[s - 1] }); if (a === 1 && s !== 1 && s !== 9) blocks.push({ t: "bism" }); } buf += e.t + " ۝" + toArabicNum(a) + " "; });
+    refs.forEach(r => { const s = r[0], a = r[1], e = T[s + ":" + a]; if (!e) return; if (s !== curS) { flush(); curS = s; blocks.push({ t: "sura", v: SURAHS[s - 1] }); if (a === 1 && s !== 1 && s !== 9) blocks.push({ t: "bism" }); } buf += e.t + " "; });
     flush();
-    const headH = 150, footH = 86;
+    const headH = 246, footH = 132;
     let bodyH = 0; blocks.forEach(b => bodyH += b.t === "sura" ? LH * 1.25 : b.t === "bism" ? LH * 1.1 : LH);
-    const H = Math.max(760, Math.round(headH + bodyH + footH + pad));
+    const H = Math.max(1200, Math.round(headH + bodyH + footH + pad));
     const c = document.createElement("canvas"); c.width = W; c.height = H; const ctx = c.getContext("2d");
+    ctx.imageSmoothingEnabled = true; try { ctx.imageSmoothingQuality = "high"; } catch (e) {}
     ctx.fillStyle = "#f6efe0"; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 5; roundRect(ctx, 24, 24, W - 48, H - 48, 18); ctx.stroke();
-    ctx.strokeStyle = "#c8a24a"; ctx.lineWidth = 2; roundRect(ctx, 38, 38, W - 76, H - 76, 12); ctx.stroke();
-    ctx.fillStyle = "#0f3d3e"; roundRect(ctx, 46, 46, W - 92, 84, 10); ctx.fill();
+    ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 9; roundRect(ctx, 40, 40, W - 80, H - 80, 30); ctx.stroke();
+    ctx.strokeStyle = "#c8a24a"; ctx.lineWidth = 3; roundRect(ctx, 64, 64, W - 128, H - 128, 20); ctx.stroke();
+    ctx.fillStyle = "#0f3d3e"; roundRect(ctx, 78, 78, W - 156, 132, 16); ctx.fill();
     ctx.textAlign = "center"; ctx.direction = "rtl";
-    ctx.fillStyle = "#e6cf95"; ctx.font = "700 34px 'Tajawal',sans-serif";
-    ctx.fillText(`﴿ الجزء ${juz} · صفحة ${p} ﴾`, W / 2, 100);
-    let y = headH + 34;
+    ctx.fillStyle = "#e6cf95"; ctx.font = "700 54px 'Tajawal',sans-serif";
+    ctx.fillText(`﴿ الجزء ${juz} · صفحة ${p} ﴾`, W / 2, 162);
+    let y = headH + 54;
     blocks.forEach(b => {
-      if (b.t === "sura") { ctx.textAlign = "center"; ctx.fillStyle = "#7a1f1f"; ctx.font = "700 34px 'Tajawal',sans-serif"; ctx.fillText("سورة " + b.v, W / 2, y + FS * 0.55); y += LH * 1.25; }
-      else if (b.t === "bism") { ctx.textAlign = "center"; ctx.fillStyle = "#1c2625"; ctx.font = "40px 'UthmanicHafs','Amiri Quran',serif"; ctx.fillText("بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ", W / 2, y + FS * 0.55); y += LH * 1.1; }
+      if (b.t === "sura") { ctx.textAlign = "center"; ctx.fillStyle = "#7a1f1f"; ctx.font = "700 52px 'Tajawal',sans-serif"; ctx.fillText("سورة " + b.v, W / 2, y + FS * 0.55); y += LH * 1.25; }
+      else if (b.t === "bism") { ctx.textAlign = "center"; ctx.fillStyle = "#1c2625"; ctx.font = "64px 'UthmanicHafs','Amiri Quran',serif"; ctx.fillText(BISM, W / 2, y + FS * 0.55); y += LH * 1.1; }
       else { ctx.textAlign = "right"; ctx.fillStyle = "#1c2625"; ctx.font = `${FS}px 'UthmanicHafs','Amiri Quran',serif`; ctx.fillText(b.v, W - pad, y + FS * 0.55); y += LH; }
     });
-    ctx.textAlign = "center"; ctx.fillStyle = "#0f3d3e"; ctx.font = "700 25px 'Tajawal',sans-serif";
-    ctx.fillText("📿 أذكار — athkar.vercel.app", W / 2, H - 48);
+    ctx.textAlign = "center"; ctx.fillStyle = "#0f3d3e"; ctx.font = "700 38px 'Tajawal',sans-serif";
+    ctx.fillText("📿 أذكار — athkar.vercel.app", W / 2, H - 72);
     return c;
   }
   async function sharePageImage(p, juz) {
@@ -1946,14 +1952,16 @@
       const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `مصحف-صفحة-${p}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, "image/png");
   }
-  async function shareJuzPDF(juz) {
+  function juzLastPage(juz) {
+    if (juz >= 30) return 604;
+    const nx = JUZ_STARTS[juz], nxP = A2P[nx[0] + ":" + nx[1]], fr = (PAGES[nxP] || [])[0];
+    return (fr && fr[0] === nx[0] && fr[1] === nx[1]) ? nxP - 1 : nxP;
+  }
+  async function shareRangePDF(fromJuz, toJuz, caption) {
     await loadPages();
-    const st = JUZ_STARTS[juz - 1], startP = A2P[st[0] + ":" + st[1]];
-    let lastP;
-    if (juz < 30) { const nx = JUZ_STARTS[juz], nxP = A2P[nx[0] + ":" + nx[1]], fr = (PAGES[nxP] || [])[0]; lastP = (fr && fr[0] === nx[0] && fr[1] === nx[1]) ? nxP - 1 : nxP; }
-    else lastP = 604;
+    const st = JUZ_STARTS[fromJuz - 1], startP = A2P[st[0] + ":" + st[1]], lastP = juzLastPage(toJuz);
     const total = lastP - startP + 1;
-    toast(`جارٍ تجهيز ملف PDF للجزء ${juz} (${total} صفحة)… انتظر لحظات`);
+    toast(`جارٍ تجهيز ملفّ PDF (${total} صفحة)… انتظر قليلًا`);
     try { await ensureJsPDF(); } catch (e) { toast("تعذّر تحميل مولّد PDF — تحقّق من الاتصال"); return; }
     const JS = window.jspdf.jsPDF; let pdf = null;
     for (let p = startP; p <= lastP; p++) {
@@ -1961,17 +1969,19 @@
       const w = c.width, h = c.height;
       if (!pdf) pdf = new JS({ unit: "px", format: [w, h], compress: true });
       else pdf.addPage([w, h]);
-      pdf.addImage(c.toDataURL("image/jpeg", 0.82), "JPEG", 0, 0, w, h);
+      pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h);
       await new Promise(r => setTimeout(r, 0));
     }
     if (!pdf) { toast("تعذّر التجهيز"); return; }
-    const blob = pdf.output("blob");
-    const file = new File([blob], `الجزء-${juz}.pdf`, { type: "application/pdf" });
+    const name = fromJuz === toJuz ? `الجزء-${fromJuz}.pdf` : `الأجزاء-${fromJuz}-${toJuz}.pdf`;
+    const blob = pdf.output("blob"), file = new File([blob], name, { type: "application/pdf" });
+    const txt = caption || (fromJuz === toJuz ? `📑 الجزء ${fromJuz} من القرآن الكريم 🤲` : `📑 الأجزاء ${fromJuz}–${toJuz} من القرآن الكريم 🤲`);
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], text: `📑 الجزء ${juz} من القرآن الكريم — وِرد اليوم 🤲` }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+      try { await navigator.share({ files: [file], text: txt }); return; } catch (e) { if (e && e.name === "AbortError") return; }
     }
-    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `الجزء-${juz}.pdf`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 8000);
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 8000);
   }
+  function shareJuzPDF(juz) { return shareRangePDF(juz, juz); }
   // الختمة
   function khatmah() { try { return JSON.parse(localStorage.getItem("khatmah") || "null"); } catch (e) { return null; } }
   function saveKhatmah(k) { localStorage.setItem("khatmah", JSON.stringify(k)); }
@@ -1994,6 +2004,8 @@
     const done = k.done.filter(Boolean).length, pct = Math.round(done / 30 * 100);
     const perDay = Math.ceil(30 / k.days), elapsed = Math.floor((Date.now() - k.start) / 86400000) + 1;
     const target = Math.min(30, elapsed * perDay);
+    const fromJ = Math.min(30, (elapsed - 1) * perDay + 1), toJ = Math.min(30, elapsed * perDay);
+    const todayLabel = fromJ === toJ ? "الجزء " + fromJ : "الأجزاء " + fromJ + "–" + toJ;
     let grid = `<div class="juz-grid khatmah-grid">`;
     for (let n = 1; n <= 30; n++) grid += `<div class="juz-cell ${k.done[n - 1] ? "done" : ""}">
       <button class="jc-read" data-juz="${n}">📖 الجزء ${n}</button>
@@ -2006,13 +2018,15 @@
       <p class="hub-note">اضغط أيّ جزء لقراءته، أو علّمه مقروءًا من داخل صفحة القراءة.</p>
       ${grid}
       <div class="khatmah-share">
-        <button class="act primary full" id="shareToday">📤 شارك وِرد اليوم (واتساب)</button>
-        <div class="mini-label">🤝 ختمة جماعية — وزّع الأجزاء على القروب</div>
+        <div class="mini-label">📖 وِرد اليوم: <b style="color:var(--accent)">${todayLabel}</b></div>
+        <button class="act primary full" id="todayPdf">📄 شارك وِرد اليوم ملفَّ PDF (للقروب)</button>
+        <button class="act full" id="todayLink">🔗 شارك رابط وِرد اليوم</button>
+        <div class="mini-label" style="margin-top:16px">🤝 ختمة جماعية — وزّع الأجزاء على القروب</div>
         <div class="group-row">
           <input type="number" id="groupN" min="2" max="30" value="6" inputmode="numeric" />
           <button class="act" id="distBtn">وزّع وشارك</button>
         </div>
-        <p class="hub-note">أدخل عدد أفراد القروب، فنوزّع الأجزاء الثلاثين بينهم ونرسل التوزيع مع رابط مباشر لكل نصيب — يقرؤه من جواله فورًا.</p>
+        <p class="hub-note">أدخل عدد أفراد القروب، فنوزّع الأجزاء الثلاثين بينهم ونرسل التوزيع مع رابط مباشر لكل نصيب.</p>
       </div>
       <div class="mushaf-nav">
         <button class="act" id="shareKhatmah">📊 شارك تقدّمي</button>
@@ -2020,7 +2034,8 @@
       </div>`;
     view.querySelectorAll(".khatmah-grid .jc-read").forEach(b => b.addEventListener("click", () => openJuz(parseInt(b.dataset.juz, 10))));
     view.querySelectorAll(".khatmah-grid .jc-check").forEach(b => b.addEventListener("click", () => { const n = parseInt(b.dataset.juz, 10); const kk = khatmah(); kk.done[n - 1] = !kk.done[n - 1]; saveKhatmah(kk); renderKhatmah(); }));
-    document.getElementById("shareToday").addEventListener("click", shareToday);
+    document.getElementById("todayPdf").addEventListener("click", () => shareRangePDF(fromJ, toJ, `📖 وِرد اليوم في ختمتنا: ${todayLabel}\nنقرؤه اليوم، وبإذن الله نُتمّ القرآن معًا 🤲`));
+    document.getElementById("todayLink").addEventListener("click", () => shareQuran(`📖 وِرد اليوم في ختمتنا: ${todayLabel}\nلنقرأه معًا 🤲`, "https://" + SITE + "/?juz=" + fromJ));
     document.getElementById("distBtn").addEventListener("click", distributeGroup);
     document.getElementById("shareKhatmah").addEventListener("click", () => shareKhatmah(done, pct));
     document.getElementById("resetKhatmah").addEventListener("click", () => { if (confirm("إعادة ضبط الختمة من البداية؟")) { localStorage.removeItem("khatmah"); renderKhatmah(); } });
