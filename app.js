@@ -1717,9 +1717,20 @@
     if (typeof RECITERS === "undefined") { view.innerHTML = `<p class="muted-line">تعذّر تحميل البيانات.</p>`; return; }
     qState.reciterIdx = parseInt(localStorage.getItem("quran_reciter") || "0", 10);
     const opts = RECITERS.map((r, i) => `<option value="${i}" ${i === qState.reciterIdx ? "selected" : ""}>${r.name}</option>`).join("");
+    const last = quranLast();
+    const resumeHTML = last ? `<button class="hub-resume" id="resumeRead">▶ متابعة القراءة — سورة ${SURAHS[last.s - 1]} : ${last.a}</button>` : "";
     view.innerHTML = `
+      <div class="mushaf-hub">
+        <div class="hub-title">📖 قراءة المصحف الشريف</div>
+        ${resumeHTML}
+        <div class="hub-grid">
+          <button class="hub-btn" id="browseJuz">📑 تصفّح بالأجزاء</button>
+          <button class="hub-btn" id="khatmahBtn">🏁 خطة ختمة</button>
+        </div>
+        <p class="hub-note">اضغط 📖 بجانب أي سورة للقراءة والتفسير · أو تصفّح بالأجزاء · أو ابدأ ختمة وشاركها</p>
+      </div>
       <div class="quran-top">
-        <label class="q-label">🎙️ القارئ</label>
+        <label class="q-label">🎙️ الاستماع — القارئ</label>
         <select id="reciterSel" class="region-sel">${opts}</select>
       </div>
       <div class="quran-controls">
@@ -1733,6 +1744,9 @@
       localStorage.setItem("quran_reciter", e.target.value);
       renderSurahList();
     });
+    view.querySelector("#browseJuz").addEventListener("click", renderJuzList);
+    view.querySelector("#khatmahBtn").addEventListener("click", renderKhatmah);
+    const rr = document.getElementById("resumeRead"); if (rr) rr.addEventListener("click", openLastRead);
     view.querySelector("#playAll").addEventListener("click", () => playSurah(0));
     view.querySelector("#repeatBtn").addEventListener("click", (e) => {
       qState.repeat = qState.repeat === "none" ? "all" : qState.repeat === "all" ? "one" : "none";
@@ -1784,13 +1798,127 @@
     let html = "";
     for (let a = 1; a <= 286; a++) {
       const e = T[num + ":" + a]; if (!e) { if (a > 7) break; else continue; }
-      html += `<div class="ayah-card">
-        <div class="ayah-text">${e.t} <span class="ayah-no">${a}</span></div>
+      html += `<div class="ayah-card" id="aya-${num}-${a}">
+        <div class="ayah-text">${e.t} <span class="ayah-no" data-s="${num}" data-a="${a}" title="علّم موضع القراءة">${a}</span></div>
         <details class="tafseer"><summary>📖 التفسير الميسّر</summary><div class="tafseer-body">${esc(e.f)}</div></details>
       </div>`;
     }
     view.innerHTML = `<div class="cat-head"><h2>سورة ${name}</h2><p>القراءة والتفسير الميسّر — مجمع الملك فهد</p></div>${html}`;
+    view.querySelectorAll(".ayah-no").forEach(bindAyahMark);
     window.scrollTo(0, 0);
+  }
+
+  /* ===== المصحف: قراءة بالأجزاء + علامة/متابعة + ختمة ===== */
+  function quranLast() { try { return JSON.parse(localStorage.getItem("quran_last") || "null"); } catch (e) { return null; } }
+  function saveQuranLast(s, a) { localStorage.setItem("quran_last", JSON.stringify({ s: s, a: a })); }
+  function bindAyahMark(el) {
+    if (!el.dataset.s) return;
+    el.addEventListener("click", () => {
+      saveQuranLast(parseInt(el.dataset.s, 10), parseInt(el.dataset.a, 10));
+      view.querySelectorAll(".ayah-no.marked").forEach(x => x.classList.remove("marked"));
+      el.classList.add("marked"); toast("حُفظ موضع القراءة 🔖 — تابِع لاحقًا من زر «متابعة القراءة»");
+    });
+  }
+  function juzOfAyah(s, a) {
+    let j = 1;
+    for (let i = 0; i < JUZ_STARTS.length; i++) { const js = JUZ_STARTS[i][0], ja = JUZ_STARTS[i][1]; if (s > js || (s === js && a >= ja)) j = i + 1; else break; }
+    return j;
+  }
+  function openLastRead() { const L = quranLast(); if (L) openJuz(juzOfAyah(L.s, L.a), L); }
+  function renderJuzList() {
+    appTitle.textContent = "أجزاء القرآن"; backBtn.classList.remove("hidden"); goBack = renderQuran;
+    let html = `<div class="cat-head"><h2>📑 الأجزاء الثلاثون</h2><p>اختر جزءًا للقراءة</p></div><div class="juz-grid">`;
+    for (let n = 1; n <= 30; n++) { const s = JUZ_STARTS[n - 1][0]; html += `<button class="juz-cell" data-juz="${n}"><b>الجزء ${n}</b><small>${SURAHS[s - 1]}</small></button>`; }
+    view.innerHTML = html + `</div>`;
+    view.querySelectorAll(".juz-cell").forEach(b => b.addEventListener("click", () => openJuz(parseInt(b.dataset.juz, 10))));
+    window.scrollTo(0, 0);
+  }
+  function openJuz(n, scrollTo) {
+    const from = JUZ_STARTS[n - 1], stop = n < 30 ? JUZ_STARTS[n] : [115, 1];
+    renderMushafRange(from[0], from[1], stop[0], stop[1], "الجزء " + n, renderJuzList,
+      { prev: n > 1 ? () => openJuz(n - 1) : null, next: n < 30 ? () => openJuz(n + 1) : null, juz: n }, scrollTo);
+  }
+  async function renderMushafRange(fromS, fromA, stopS, stopA, title, backFn, nav, scrollTo) {
+    appTitle.textContent = title; backBtn.classList.remove("hidden"); goBack = backFn;
+    view.innerHTML = `<div class="cat-head"><h2>${title}</h2><p>النصّ العثماني الرسمي ومعه التفسير الميسّر</p></div><div class="loading">جارٍ التحميل…</div>`;
+    let T; try { T = await loadTafseer(); } catch (e) { const l = view.querySelector(".loading"); if (l) l.textContent = "تعذّر التحميل — تحقّق من الاتصال أول مرة."; return; }
+    let html = "", curS = -1;
+    outer:
+    for (let s = fromS; s <= 114; s++) {
+      let a = (s === fromS) ? fromA : 1;
+      for (; ; a++) {
+        if (s === stopS && a === stopA) break outer;
+        const e = T[s + ":" + a]; if (!e) break;
+        if (s !== curS) {
+          curS = s;
+          html += `<div class="mushaf-sura">سورة ${SURAHS[s - 1]}</div>`;
+          if (a === 1 && s !== 1 && s !== 9) html += `<div class="mushaf-basmala">بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ</div>`;
+        }
+        html += `<div class="ayah-card" id="aya-${s}-${a}">
+          <div class="ayah-text">${e.t} <span class="ayah-no" data-s="${s}" data-a="${a}" title="علّم موضع القراءة">${a}</span></div>
+          <details class="tafseer"><summary>📖 التفسير</summary><div class="tafseer-body">${esc(e.f)}</div></details>
+        </div>`;
+      }
+    }
+    let navHtml = `<div class="mushaf-nav">`;
+    if (nav && nav.prev) navHtml += `<button class="act" id="mnPrev">◀ السابق</button>`;
+    if (nav && nav.juz) navHtml += `<button class="act primary" id="mnDone">✅ علّمتُ الجزء ${nav.juz} مقروءًا</button>`;
+    if (nav && nav.next) navHtml += `<button class="act" id="mnNext">التالي ▶</button>`;
+    navHtml += `</div>`;
+    view.innerHTML = `<div class="cat-head"><h2>${title}</h2><p>النصّ العثماني ومعه التفسير الميسّر</p></div>${html}${navHtml}`;
+    view.querySelectorAll(".ayah-no").forEach(bindAyahMark);
+    if (nav) {
+      const p = document.getElementById("mnPrev"); if (p && nav.prev) p.addEventListener("click", nav.prev);
+      const nx = document.getElementById("mnNext"); if (nx && nav.next) nx.addEventListener("click", nav.next);
+      const d = document.getElementById("mnDone"); if (d && nav.juz) d.addEventListener("click", () => markJuzDone(nav.juz));
+    }
+    if (scrollTo) { const t = document.getElementById(`aya-${scrollTo.s}-${scrollTo.a}`); if (t) { t.scrollIntoView({ block: "center" }); t.classList.add("flash"); } }
+    else window.scrollTo(0, 0);
+  }
+  // الختمة
+  function khatmah() { try { return JSON.parse(localStorage.getItem("khatmah") || "null"); } catch (e) { return null; } }
+  function saveKhatmah(k) { localStorage.setItem("khatmah", JSON.stringify(k)); }
+  function startKhatmah(days) { saveKhatmah({ days: days, start: Date.now(), done: new Array(30).fill(false) }); renderKhatmah(); }
+  function markJuzDone(n) {
+    const k = khatmah();
+    if (k) { k.done[n - 1] = true; saveKhatmah(k); toast("أحسنت — عُلّم الجزء " + n + " ضمن ختمتك ✅"); renderKhatmah(); }
+    else { toast("عُلّم الجزء " + n + " ✅ (ابدأ خطة ختمة لتتبّع تقدّمك)"); }
+  }
+  function renderKhatmah() {
+    appTitle.textContent = "ختمة القرآن"; backBtn.classList.remove("hidden"); goBack = renderQuran;
+    const k = khatmah();
+    if (!k) {
+      const opts = [[30, "شهر — جزء يوميًا"], [15, "نصف شهر — جزآن يوميًا"], [10, "عشرة أيام — ٣ أجزاء يوميًا"], [7, "أسبوع — أربعة أجزاء يوميًا"]];
+      view.innerHTML = `<div class="cat-head"><h2>🏁 خطة ختمة القرآن</h2><p>اختر مدّة الختمة، ونعينك على إتمامها بإذن الله</p></div>
+        <div class="khatmah-setup">${opts.map(d => `<button class="khatmah-opt" data-d="${d[0]}"><b>${d[0]} يومًا</b><small>${d[1]}</small></button>`).join("")}</div>`;
+      view.querySelectorAll(".khatmah-opt").forEach(b => b.addEventListener("click", () => startKhatmah(parseInt(b.dataset.d, 10))));
+      window.scrollTo(0, 0); return;
+    }
+    const done = k.done.filter(Boolean).length, pct = Math.round(done / 30 * 100);
+    const perDay = Math.ceil(30 / k.days), elapsed = Math.floor((Date.now() - k.start) / 86400000) + 1;
+    const target = Math.min(30, elapsed * perDay);
+    let grid = `<div class="juz-grid khatmah-grid">`;
+    for (let n = 1; n <= 30; n++) grid += `<button class="juz-cell ${k.done[n - 1] ? "done" : ""}" data-juz="${n}">الجزء ${n}${k.done[n - 1] ? " ✓" : ""}</button>`;
+    grid += `</div>`;
+    const behind = done < target - perDay;
+    view.innerHTML = `<div class="cat-head"><h2>🏁 ختمتك</h2><p>مدّة ${k.days} يومًا · المطلوب اليوم: حتى الجزء ${target}${done >= 30 ? " · تمّت بحمد الله 🤲" : behind ? " · تحتاج لحاقًا 💪" : " · أنت على المسار ✅"}</p></div>
+      <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="progress-label">${done} / 30 جزءًا (${pct}%)</div></div>
+      <p class="hub-note">اضغط أيّ جزء لقراءته، أو علّمه مقروءًا من داخل صفحة القراءة.</p>
+      ${grid}
+      <div class="mushaf-nav">
+        <button class="act primary" id="shareKhatmah">📤 شارك تقدّمي</button>
+        <button class="act" id="resetKhatmah">↺ إعادة الختمة</button>
+      </div>`;
+    view.querySelectorAll(".khatmah-grid .juz-cell").forEach(b => b.addEventListener("click", () => openJuz(parseInt(b.dataset.juz, 10))));
+    document.getElementById("shareKhatmah").addEventListener("click", () => shareKhatmah(done, pct));
+    document.getElementById("resetKhatmah").addEventListener("click", () => { if (confirm("إعادة ضبط الختمة من البداية؟")) { localStorage.removeItem("khatmah"); renderKhatmah(); } });
+    window.scrollTo(0, 0);
+  }
+  function shareKhatmah(done, pct) {
+    const text = `🏁 ختمتي للقرآن الكريم\nأتممتُ ${done} من ٣٠ جزءًا (${pct}%) بفضل الله${done >= 30 ? "\nالحمد لله، تمّت الختمة — تقبّل الله 🤲" : "\nاللهم أعنّي على إتمامها"}\n\nاقرأ القرآن وابدأ ختمتك:\nhttps://${SITE}/`;
+    if (navigator.share) navigator.share({ title: "ختمة القرآن", text: text }).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast("نُسخ النص — انشره لأحبّتك 🤲"));
   }
 
   async function playSurah(i) {
