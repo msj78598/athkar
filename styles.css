@@ -837,3 +837,8 @@ img, canvas, video { max-width: 100%; }
 .intro-list b { color: var(--primary); }
 [data-theme="dark"] .intro-list b { color: var(--accent); }
 .intro-note { color: var(--text-muted); font-size: .85rem; line-height: 1.7; margin-bottom: 18px; }
+
+/* شريط تكبير/تصغير خطّ القراءة النصّية */
+.mushaf-fs { display: flex; gap: 8px; margin: 6px 0 10px; }
+.mushaf-fs .act { flex: 1; }
+.mushaf-fs #pgFsDown, .mushaf-fs #pgFsUp { flex: 0 0 auto; min-width: 56px; font-weight: 700; font-size: 1.15rem; font-family: "Amiri Quran", serif; }

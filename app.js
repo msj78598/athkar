@@ -1838,6 +1838,9 @@
   function toArabicNum(n) { return String(n).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[+d]); }
   // البسملة مشتقّة حرفيًّا من المصدر الرسمي (نصّ 1:1 بعد إزالة علامة نهاية الآية)
   function bismText(T) { return ((T && T["1:1"]) ? T["1:1"].t : "").replace(/[\s ]*[ﭐ-﷿ﹰ-﻿]+[\s ]*$/, "").trim(); }
+  // إزالة محرف علامة نهاية الآية الرسمي (PUA) من العرض النصّي — نستبدله برقم دائري موثوق
+  function stripEndMark(t) { return String(t || "").replace(/[s  ]*[ﭐ-﷿ﹰ-﻿]+[s  ]*$/, "").trim(); }
+  let quranFS = parseFloat(localStorage.getItem("quran_fs")) || 1;
   let mushafBack = null;
   async function openAyahPage(s, a) { mushafBack = renderQuran; try { await loadPages(); } catch (e) { toast("تعذّر التحميل — تحقّق من الاتصال"); return; } renderMushafPage(A2P[s + ":" + a] || 1, { s: s, a: a }); }
   function openSurah(num) { openAyahPage(num, 1); }
@@ -1934,7 +1937,7 @@
     const juz = refs.length ? juzOfAyah(refs[0][0], refs[0][1]) : 1;
     const BISM = bismText(T);
     let out = "", curS = -1, flow = "";
-    const flush = () => { if (flow) { out += `<div class="mushaf-page">${flow}</div>`; flow = ""; } };
+    const flush = () => { if (flow) { out += `<div class="mushaf-page" style="font-size:${(1.6 * quranFS).toFixed(2)}rem">${flow}</div>`; flow = ""; } };
     refs.forEach(ref => {
       const s = ref[0], a = ref[1], e = T[s + ":" + a]; if (!e) return;
       if (s !== curS) {
@@ -1942,21 +1945,28 @@
         out += `<div class="mushaf-sura">سورة ${SURAHS[s - 1]}</div>`;
         if (a === 1 && s !== 1 && s !== 9) out += `<div class="mushaf-basmala">${BISM}</div>`;
       }
-      flow += `<span class="aya" id="aya-${s}-${a}" data-s="${s}" data-a="${a}">${e.t}</span> `;
+      flow += `<span class="aya" id="aya-${s}-${a}" data-s="${s}" data-a="${a}">${stripEndMark(e.t)}<span class="aendmark">${toArabicNum(a)}</span></span> `;
     });
     flush();
-    const nav = `<div class="mushaf-nav">
-      <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""}>◀ السابقة</button>
-      <button class="act" id="pgImg">🖼️ صورة الصفحة</button>
-      <button class="act" id="pgNext" ${p >= 604 ? "disabled" : ""}>التالية ▶</button>
+    const nav = `<div class="mushaf-fs">
+      <button class="act" id="pgFsDown" aria-label="تصغير الخط">أ−</button>
+      <button class="act" id="pgImg">🖼️ عرض صورة الصفحة الرسمية</button>
+      <button class="act" id="pgFsUp" aria-label="تكبير الخط">أ+</button>
     </div>
-    <button class="act full" id="pgMark">🔖 علّم موضعي هنا</button>`;
-    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} — تفسير ﴾</h2><p>اضغط أيّ آية لعرض تفسيرها الميسّر</p></div>${out}${nav}`;
+    <div class="mushaf-nav">
+      <button class="act" id="pgPrev" ${p <= 1 ? "disabled" : ""}>◀ السابقة</button>
+      <button class="act" id="pgMark">🔖 علّم</button>
+      <button class="act" id="pgNext" ${p >= 604 ? "disabled" : ""}>التالية ▶</button>
+    </div>`;
+    view.innerHTML = `<div class="cat-head"><h2>﴿ الجزء ${juz} · صفحة ${p} — قراءة وتفسير ﴾</h2><p>النصّ الرسمي (مجمع الملك فهد) · اضغط أيّ آية لتفسيرها</p></div>${out}${nav}`;
     view.querySelectorAll(".aya").forEach(el => el.addEventListener("click", () => showAyahTafseer(+el.dataset.s, +el.dataset.a)));
     const pv = document.getElementById("pgPrev"); if (pv) pv.addEventListener("click", () => renderMushafText(p - 1));
     const nx = document.getElementById("pgNext"); if (nx) nx.addEventListener("click", () => renderMushafText(p + 1));
     const ig = document.getElementById("pgImg"); if (ig) ig.addEventListener("click", () => renderMushafPage(p));
     const mk = document.getElementById("pgMark"); if (mk) mk.addEventListener("click", () => { const f = refs[0] || [1, 1]; saveQuranLast(f[0], f[1]); toast("حُفظ موضع القراءة (صفحة " + p + ") 🔖"); });
+    const applyFS = () => { localStorage.setItem("quran_fs", quranFS); view.querySelectorAll(".mushaf-page").forEach(el => el.style.fontSize = (1.6 * quranFS).toFixed(2) + "rem"); };
+    const fdn = document.getElementById("pgFsDown"); if (fdn) fdn.addEventListener("click", () => { quranFS = Math.max(0.75, quranFS - 0.12); applyFS(); });
+    const fup = document.getElementById("pgFsUp"); if (fup) fup.addEventListener("click", () => { quranFS = Math.min(2.4, quranFS + 0.12); applyFS(); });
     if (anchor) { const t = document.getElementById(`aya-${anchor.s}-${anchor.a}`); if (t) { t.scrollIntoView({ block: "center" }); t.classList.add("flash"); } else window.scrollTo(0, 0); }
     else window.scrollTo(0, 0);
   }
@@ -1967,7 +1977,7 @@
     m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true");
     m.innerHTML = `<div class="am-box"><button class="am-close" aria-label="إغلاق">✕</button>
       <div class="am-ref">سورة ${SURAHS[s - 1]} · الآية ${a}</div>
-      <div class="am-aya">${e.t}</div>
+      <div class="am-aya">${stripEndMark(e.t)} <span class="aendmark">${toArabicNum(a)}</span></div>
       <div class="am-taf"><b>التفسير الميسّر</b><p>${esc(e.f)}</p></div>
       <button class="act primary" id="amBookmark">🔖 اجعلها موضع المتابعة</button></div>`;
     const prevFocus = document.activeElement;
