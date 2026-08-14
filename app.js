@@ -178,9 +178,9 @@
     const NS = "athkar-vercel-app";
     try {
       const inc = !sessionStorage.getItem("av_counted");
-      const u = "https://api.counterapi.dev/v1/" + NS + "/visits" + (inc ? "/up" : "/");
+      const u = "https://abacus.jasoncameron.dev/" + (inc ? "hit" : "get") + "/" + NS + "/visits";
       const r = await fetch(u); const j = await r.json();
-      const n = j && typeof j.count === "number" ? j.count : null;
+      const n = j && typeof j.value === "number" ? j.value : null;
       if (n === null) { el.style.display = "none"; return; }
       if (inc) sessionStorage.setItem("av_counted", "1");
       el.textContent = "🌿 زارَنا " + n.toLocaleString("ar-EG") + " — جزى الله كلَّ من نشرها خيرًا";
