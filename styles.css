@@ -814,15 +814,15 @@ img, canvas, video { max-width: 100%; }
 
 /* ===== عارض صور صفحات المصحف ===== */
 .mushaf-img-wrap { text-align: center; margin: 4px 0 14px; overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
-.mushaf-img { width: 100%; max-width: 540px; height: auto; border-radius: 6px; box-shadow: var(--shadow); background: #fbf7ec; cursor: zoom-in; }
-.mushaf-img.zoom { max-width: none; width: auto; cursor: zoom-out; }
+.mushaf-img { width: 100%; max-width: 540px; height: auto; border-radius: 6px; box-shadow: var(--shadow); background: #fbf7ec; }
+
 
 /* زر مشاركة السورة في قائمة السور */
 .sr-share { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 1rem; }
 .sr-share:active { transform: scale(.92); }
 
 /* السحب لتقليب صفحات المصحف مع إبقاء التمرير العمودي */
-.mushaf-img-wrap { touch-action: pan-y; }
+.mushaf-img-wrap { touch-action: pan-y pinch-zoom; }
 
 /* ===== شاشة التعريف الأولى ===== */
 .intro-overlay { position: fixed; inset: 0; z-index: 80; background: rgba(6,12,11,.72); display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(3px); }

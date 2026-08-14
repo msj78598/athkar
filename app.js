@@ -175,7 +175,7 @@
   }
   async function loadVisits() {
     const el = document.getElementById("visitCount"); if (!el) return;
-    const NS = "athkar-vercel-app";
+    const NS = "athkar-total";
     try {
       const inc = !sessionStorage.getItem("av_counted");
       const u = "https://abacus.jasoncameron.dev/" + (inc ? "hit" : "get") + "/" + NS + "/visits";
@@ -1893,13 +1893,13 @@
     const tx = document.getElementById("pgText"); if (tx) tx.addEventListener("click", () => renderMushafText(p));
     const mk = document.getElementById("pgMark"); if (mk) mk.addEventListener("click", () => { const f = refs[0] || [1, 1]; saveQuranLast(f[0], f[1]); toast("حُفظ موضع القراءة (صفحة " + p + ") 🔖"); });
     const sb = document.getElementById("pgShareBtn"); if (sb) sb.addEventListener("click", () => sharePageMenu(p, juz, curSura));
-    const im = document.getElementById("mimg"); if (im) im.addEventListener("click", () => im.classList.toggle("zoom"));
+    const im = document.getElementById("mimg");
     const wrap = view.querySelector(".mushaf-img-wrap");
     if (wrap) {
       let sx = 0, sy = 0, st = 0;
       wrap.addEventListener("touchstart", (e) => { if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now(); } }, { passive: true });
       wrap.addEventListener("touchend", (e) => {
-        if (e.changedTouches.length !== 1 || (im && im.classList.contains("zoom"))) return;
+        if (e.changedTouches.length !== 1 || (window.visualViewport && window.visualViewport.scale > 1.05)) return;
         const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
         if (Date.now() - st < 600 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) {
           if (dx < 0) { if (p < 604) renderMushafPage(p + 1); }   // سحب لليسار ⇦ التالية (اتجاه RTL)
